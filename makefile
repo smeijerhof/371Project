@@ -6,3 +6,10 @@ linux:
 
 windows:
 	g++ -o game src/*.cpp -O1 -w -mwindows -Wno-missing-braces -I include/ -L lib/ lib/libraylibwindows.a -lopengl32 -lgdi32 -lwinmm
+
+clean:
+	g++ -Wall -o server TCPServer.cpp
+	g++ -Wall -o client TCPClient.cpp
+
+server:
+	$(RM) client server
