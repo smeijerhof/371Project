@@ -4,6 +4,20 @@
 #include <time.h>
 #include <stdlib.h>
 
+#include <stdio.h>
+#include <string.h>
+#include <sys/socket.h>
+#include <sys/types.h>
+#include <netinet/in.h>
+#include <netdb.h>
+#include <unistd.h>
+#include <pthread.h>
+#include <math.h>
+
+#define SERVER_PORT 65500
+#define IP "142.58.14.7"
+#define BUFFER_SIZE 256
+
 enum Player { NONE = 0, ONE, TWO, THREE, FOUR };
 
 struct Fish {
@@ -67,6 +81,8 @@ struct Game {
         seed = time(NULL);
         srand(seed);
 
+        // TODO: get fish locations from server, in order to synchronize locations across clients
+        // Upon establishment connection, server sends back locations of all the fish in the game world
         fishes = new Fish[fishNum];
         positions = new Vector2[fishNum];
         for (int i = 0; i < fishNum; i++) {
@@ -150,11 +166,67 @@ bool connectToGame(Game& game, Actor& self) {
     return true;
 }
 
+void printError(const char* message) {
+    perror(message);
+    exit(-1);
+}
+
+int connectToServer() {
+    struct hostent* serverInfo;
+    serverInfo = gethostbyname(IP);
+    if(!serverInfo)
+        printError("Could not retrieve host information");
+
+    // Initialize destination socket
+    struct sockaddr_in serverAddress;
+    memset(&serverAddress, 0, sizeof(serverAddress));
+    serverAddress.sin_family = AF_INET;
+    memcpy(&serverAddress.sin_addr.s_addr, serverInfo->h_addr, serverInfo->h_length);
+    serverAddress.sin_port = htons(SERVER_PORT);
+
+    // Create new TCP socket, return file descriptor
+    int sock = socket(AF_INET, SOCK_STREAM, 0);
+    if(sock < 0)
+        printError("socket failed");
+
+    // Try to connect to server
+    int c = connect(sock, (struct sockaddr*) &serverAddress, sizeof(serverAddress));
+    if(c < 0)
+        printError("Could not connect to server");
+    return c;
+
+}
+
+void* sendMessage(void* msg) {
+    // Based on message needing to be sent from server, client sends appropriate token, awaits response on new thread
+    char buffer[BUFFER_SIZE];
+
+    int serverSocket = *(int *) msg;
+
+
+    write(serverSocket, "hello", 6);
+    read(serverSocket, buffer, BUFFER_SIZE);
+    printf("%s\n", buffer);
+
+    // switch((char*) msg) {
+    //     case "mouse":
+    //         break;
+    //     case "catch":
+    //         break;
+    //     case "catchComplete":
+    //         break;
+    // }
+}
+
 int main() {
+    pthread_t tcpThread;
+
     Game game;
 
     game.screenWidth = 800;
     game.screenHeight = 450;
+
+    int serverSocket = connectToServer();
 
     game.start();
 
@@ -167,6 +239,7 @@ int main() {
 
     while (!WindowShouldClose()) {
         game.elapsed += GetFrameTime();
+        // printf("%f\n", fmod(game.elapsed,0.1f) * 100);
         if (IsKeyPressed(KEY_R)) {
             game.restart();
         }
@@ -195,6 +268,11 @@ int main() {
             self.points++;
         }
 
+        // Multi-threaded client Testing
+        if (IsKeyPressed(KEY_P)) {
+            pthread_create(&tcpThread, NULL, sendMessage, (void*) &serverSocket);
+        }
+
         BeginDrawing();
 
             ClearBackground(DARKBLUE);
@@ -213,6 +291,7 @@ int main() {
         EndDrawing();
     }
 
+    close(serverSocket);
     CloseWindow();
     return 0;
 }
