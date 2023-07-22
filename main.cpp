@@ -14,7 +14,7 @@
 #include <pthread.h>
 #include <math.h>
 
-#define SERVER_PORT 65500
+#define SERVER_PORT 65501
 #define IP "142.58.14.7"
 #define BUFFER_SIZE 256
 
@@ -197,16 +197,51 @@ int connectToServer() {
 
 }
 
+struct crsrMsg {
+    int serverSocket;
+    uint16_t mouseX;
+    uint16_t mouseY;
+};
+
+struct crsrCharMsg {
+    int serverSocket;
+    char mouseX[4];
+    char mouseY[4];
+};
+
 void* sendMessage(void* msg) {
     // Based on message needing to be sent from server, client sends appropriate token, awaits response on new thread
-    char buffer[BUFFER_SIZE];
+    uint16_t buffer[BUFFER_SIZE];
+    uint16_t* ptr = buffer;
 
-    int serverSocket = *(int *) msg;
+    struct crsrMsg* myMsg = (struct crsrMsg*) msg;
 
+    printf("%d %d\n", myMsg->mouseX, myMsg->mouseY);
+    printf("%d %d\n", htons(myMsg->mouseX), htons(myMsg->mouseY));
 
-    write(serverSocket, "hello", 6);
-    read(serverSocket, buffer, BUFFER_SIZE);
-    printf("%s\n", buffer);
+    buffer[0] = htons(1);
+    buffer[1] = htons(myMsg->mouseX);
+    buffer[2] = htons(myMsg->mouseY);
+
+    ptr = buffer + 6;
+
+    // free(msg);
+    printf("client: ");
+    for(int i = 0; i < 3; i++) {
+        printf("%d ", buffer[i]);
+    }
+    printf("\n");
+    // TODO: read/write not working
+
+    // int serverSocket = *(int *) msg;
+
+    printf("%ld\n",ptr - buffer);
+
+    write(myMsg->serverSocket, buffer, ptr - buffer);
+
+    char response[BUFFER_SIZE];
+    read(myMsg->serverSocket, response, BUFFER_SIZE);
+    printf("response: %s\n", response);
 
     // switch((char*) msg) {
     //     case "mouse":
@@ -218,6 +253,35 @@ void* sendMessage(void* msg) {
     // }
 }
 
+void* sendCharMessage(void* msg) {
+    // Based on message needing to be sent from server, client sends appropriate token, awaits response on new thread
+    char buffer[BUFFER_SIZE];
+
+
+    struct crsrCharMsg* myMsg = (struct crsrCharMsg*) msg;
+
+    printf("charMsg: %d\n", myMsg->serverSocket);
+
+    printf("%s %s\n", myMsg->mouseX, myMsg->mouseY);
+
+    strncat(buffer, "001", 3);
+    strncat(buffer, myMsg->mouseX, 3);
+    strncat(buffer, myMsg->mouseY, 3);
+
+    // free(msg);
+    printf("client: ");
+    printf("%s\n", buffer);
+
+    // TODO: read/write not working
+
+
+    printf("%ld\n",write(myMsg->serverSocket, buffer, BUFFER_SIZE));
+
+    char response[BUFFER_SIZE];
+    read(myMsg->serverSocket, response, BUFFER_SIZE);
+    printf("response: %s\n", response);
+}
+
 int main() {
     pthread_t tcpThread;
 
@@ -226,7 +290,9 @@ int main() {
     game.screenWidth = 800;
     game.screenHeight = 450;
 
-    int serverSocket = connectToServer();
+    int myServerSocket = connectToServer();
+    printf("serverSocket: %d\n", myServerSocket);
+
 
     game.start();
 
@@ -238,6 +304,9 @@ int main() {
     if (!connectToGame(game, self)) return -1;
 
     while (!WindowShouldClose()) {
+        // TODO: ServerSocket not maintained through iterations
+        printf("serverSocket: %d\n", myServerSocket);
+        
         game.elapsed += GetFrameTime();
         // printf("%f\n", fmod(game.elapsed,0.1f) * 100);
         if (IsKeyPressed(KEY_R)) {
@@ -270,7 +339,23 @@ int main() {
 
         // Multi-threaded client Testing
         if (IsKeyPressed(KEY_P)) {
-            pthread_create(&tcpThread, NULL, sendMessage, (void*) &serverSocket);
+            struct crsrMsg myMsg;
+            myMsg.serverSocket = myServerSocket;
+            myMsg.mouseX = (uint16_t) GetMousePosition().x;
+            myMsg.mouseY = (uint16_t) GetMousePosition().y;
+
+            // pthread_create(&tcpThread, NULL, sendMessage, (void*) &myMsg);
+
+            struct crsrCharMsg myCharMsg;
+            printf("serverSocket: %d\n", myServerSocket);
+            myCharMsg.serverSocket = myServerSocket;
+            printf("myCharMsg: %d\n", myCharMsg.serverSocket);
+            snprintf(myCharMsg.mouseX, 4, "%03d", (int) GetMousePosition().x);
+            snprintf(myCharMsg.mouseY, 4, "%03d", (int) GetMousePosition().y);
+
+            pthread_create(&tcpThread, NULL, sendCharMessage, (void*) &myCharMsg);
+
+            // pthread_join(tcpThread,NULL);
         }
 
         BeginDrawing();
@@ -291,7 +376,7 @@ int main() {
         EndDrawing();
     }
 
-    close(serverSocket);
+    close(myServerSocket);
     CloseWindow();
     return 0;
 }
