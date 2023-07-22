@@ -9,7 +9,7 @@
 #include <unistd.h>
 
 #define SERVER_PORT 65500
-#define BUFFER_SIZE 256
+#define BUFFER_SIZE 10
 #define QUEUE_SIZE 10
 
 void printError(const char* message) {
@@ -19,7 +19,7 @@ void printError(const char* message) {
 
 int main(int argc, char const *argv[]) {
     // Hold data read from socket
-    char buffer[BUFFER_SIZE];
+    uint16_t buffer[BUFFER_SIZE];
     char response[] = "back at you";    // response message
 
     // specify socket to read from 
@@ -49,14 +49,22 @@ int main(int argc, char const *argv[]) {
     if(connectionSocket < 0)
         printError("Failed to accept\n");
 
+    printf("connection established\n");
+
     // read data from new connection
     for(int i = 0; i < atoi(argv[1]); i++) {
         read(connectionSocket, buffer, BUFFER_SIZE);
+        printf("server: ");
+        // TODO: not being received correctly
+        for(int j = 0; j < 3; j++)
+            printf("%d ", ntohs(buffer[j]));
+        printf("\n");
+        write(connectionSocket, "back at you", 12);  
 
-        if(strcmp(buffer, "hello") == 0) {
-            // send response to client
-            write(connectionSocket, response, sizeof(response));  
-        }
+        // if(strcmp(buffer, "hello") == 0) {
+        //     // send response to client
+        //     write(connectionSocket, response, sizeof(response));  
+        // }
     }
 
     // close connections
