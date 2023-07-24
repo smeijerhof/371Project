@@ -8,7 +8,7 @@
 #include <netinet/in.h>
 #include <unistd.h>
 
-#define SERVER_PORT 65500
+#define SERVER_PORT 65501
 #define BUFFER_SIZE 10
 #define QUEUE_SIZE 10
 
@@ -19,6 +19,7 @@ void printError(const char* message) {
 
 int main(int argc, char const *argv[]) {
     // Hold data read from socket
+    // char buffer[BUFFER_SIZE];
     uint16_t buffer[BUFFER_SIZE];
     char response[] = "back at you";    // response message
 
@@ -59,7 +60,8 @@ int main(int argc, char const *argv[]) {
         for(int j = 0; j < 3; j++)
             printf("%d ", ntohs(buffer[j]));
         printf("\n");
-        write(connectionSocket, "back at you", 12);  
+        // printf("%s\n", buffer);
+        write(connectionSocket, buffer, BUFFER_SIZE);  
 
         // if(strcmp(buffer, "hello") == 0) {
         //     // send response to client
