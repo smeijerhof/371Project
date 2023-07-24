@@ -205,12 +205,6 @@ struct crsrMsg {
     uint16_t mouseY;
 };
 
-struct crsrCharMsg {
-    int serverSocket;
-    char mouseX[4];
-    char mouseY[4];
-};
-
 void* sendMessage(void* msg) {
     // Based on message needing to be sent from server, client sends appropriate token, awaits response on new thread
     uint16_t buffer[BUFFER_SIZE];
@@ -253,37 +247,6 @@ void* sendMessage(void* msg) {
     //     case "catchComplete":
     //         break;
     // }
-
-    return 0;
-}
-
-void* sendCharMessage(void* msg) {
-    // Based on message needing to be sent from server, client sends appropriate token, awaits response on new thread
-    char buffer[BUFFER_SIZE];
-
-
-    struct crsrCharMsg* myMsg = (struct crsrCharMsg*) msg;
-
-    // printf("charMsg: %d\n", myMsg->serverSocket);
-
-    printf("%s %s\n", myMsg->mouseX, myMsg->mouseY);
-
-    strncat(buffer, "001", 3);
-    strncat(buffer, myMsg->mouseX, 3);
-    strncat(buffer, myMsg->mouseY, 3);
-
-    // free(msg);
-    // printf("client: ");
-    // printf("%s\n", buffer);
-
-    // TODO: read/write not working
-
-
-    printf("%ld\n",write(myMsg->serverSocket, buffer, BUFFER_SIZE));
-
-    char response[BUFFER_SIZE];
-    read(myMsg->serverSocket, response, BUFFER_SIZE);
-    printf("response: %s\n", response);
 
     return 0;
 }
