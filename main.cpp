@@ -193,12 +193,14 @@ int connectToServer() {
     int c = connect(sock, (struct sockaddr*) &serverAddress, sizeof(serverAddress));
     if(c < 0)
         printError("Could not connect to server");
-    return c;
+
+    return sock;
 
 }
 
 struct crsrMsg {
     int serverSocket;
+    uint16_t token;
     uint16_t mouseX;
     uint16_t mouseY;
 };
@@ -216,10 +218,10 @@ void* sendMessage(void* msg) {
 
     struct crsrMsg* myMsg = (struct crsrMsg*) msg;
 
-    printf("%d %d\n", myMsg->mouseX, myMsg->mouseY);
-    printf("%d %d\n", htons(myMsg->mouseX), htons(myMsg->mouseY));
+    // printf("%d %d\n", myMsg->mouseX, myMsg->mouseY);
+    // printf("%d %d\n", htons(myMsg->mouseX), htons(myMsg->mouseY));
 
-    buffer[0] = htons(1);
+    buffer[0] = htons(myMsg->token);
     buffer[1] = htons(myMsg->mouseX);
     buffer[2] = htons(myMsg->mouseY);
 
@@ -228,20 +230,20 @@ void* sendMessage(void* msg) {
     // free(msg);
     printf("client: ");
     for(int i = 0; i < 3; i++) {
-        printf("%d ", buffer[i]);
+        printf("%d ", ntohs(buffer[i]));
     }
     printf("\n");
-    // TODO: read/write not working
 
-    // int serverSocket = *(int *) msg;
-
-    printf("%ld\n",ptr - buffer);
+    // printf("%ld\n",ptr - buffer);
 
     write(myMsg->serverSocket, buffer, ptr - buffer);
 
-    char response[BUFFER_SIZE];
+    uint16_t response[BUFFER_SIZE];
     read(myMsg->serverSocket, response, BUFFER_SIZE);
-    printf("response: %s\n", response);
+    printf("response: ");
+    for(int i = 0; i < 3; i++)
+        printf("%d ", ntohs(buffer[i]));
+    printf("\n", response);
 
     // switch((char*) msg) {
     //     case "mouse":
@@ -251,6 +253,8 @@ void* sendMessage(void* msg) {
     //     case "catchComplete":
     //         break;
     // }
+
+    return 0;
 }
 
 void* sendCharMessage(void* msg) {
@@ -260,7 +264,7 @@ void* sendCharMessage(void* msg) {
 
     struct crsrCharMsg* myMsg = (struct crsrCharMsg*) msg;
 
-    printf("charMsg: %d\n", myMsg->serverSocket);
+    // printf("charMsg: %d\n", myMsg->serverSocket);
 
     printf("%s %s\n", myMsg->mouseX, myMsg->mouseY);
 
@@ -269,8 +273,8 @@ void* sendCharMessage(void* msg) {
     strncat(buffer, myMsg->mouseY, 3);
 
     // free(msg);
-    printf("client: ");
-    printf("%s\n", buffer);
+    // printf("client: ");
+    // printf("%s\n", buffer);
 
     // TODO: read/write not working
 
@@ -280,6 +284,8 @@ void* sendCharMessage(void* msg) {
     char response[BUFFER_SIZE];
     read(myMsg->serverSocket, response, BUFFER_SIZE);
     printf("response: %s\n", response);
+
+    return 0;
 }
 
 int main() {
@@ -291,7 +297,7 @@ int main() {
     game.screenHeight = 450;
 
     int myServerSocket = connectToServer();
-    printf("serverSocket: %d\n", myServerSocket);
+    // printf("serverSocket: %d\n", myServerSocket);
 
 
     game.start();
@@ -304,11 +310,8 @@ int main() {
     if (!connectToGame(game, self)) return -1;
 
     while (!WindowShouldClose()) {
-        // TODO: ServerSocket not maintained through iterations
-        printf("serverSocket: %d\n", myServerSocket);
         
         game.elapsed += GetFrameTime();
-        // printf("%f\n", fmod(game.elapsed,0.1f) * 100);
         if (IsKeyPressed(KEY_R)) {
             game.restart();
         }
@@ -338,25 +341,27 @@ int main() {
         }
 
         // Multi-threaded client Testing
-        if (IsKeyPressed(KEY_P)) {
+        // TODO: switch back to uint16_t? Problem was with return, not data passed
+        // printf("%d\n",(int) (fmod(game.elapsed,0.1f) * 100));
+        if (int(fmod(game.elapsed, 0.1f) * 100) == 0) {
             struct crsrMsg myMsg;
             myMsg.serverSocket = myServerSocket;
+            myMsg.token = (uint16_t) 1;
             myMsg.mouseX = (uint16_t) GetMousePosition().x;
             myMsg.mouseY = (uint16_t) GetMousePosition().y;
 
-            // pthread_create(&tcpThread, NULL, sendMessage, (void*) &myMsg);
+            pthread_create(&tcpThread, NULL, sendMessage, (void*) &myMsg);
 
-            struct crsrCharMsg myCharMsg;
-            printf("serverSocket: %d\n", myServerSocket);
-            myCharMsg.serverSocket = myServerSocket;
-            printf("myCharMsg: %d\n", myCharMsg.serverSocket);
-            snprintf(myCharMsg.mouseX, 4, "%03d", (int) GetMousePosition().x);
-            snprintf(myCharMsg.mouseY, 4, "%03d", (int) GetMousePosition().y);
+            // struct crsrCharMsg myCharMsg;
+            // myCharMsg.serverSocket = myServerSocket;
+            // snprintf(myCharMsg.mouseX, 4, "%03d", (int) GetMousePosition().x);
+            // snprintf(myCharMsg.mouseY, 4, "%03d", (int) GetMousePosition().y);
 
-            pthread_create(&tcpThread, NULL, sendCharMessage, (void*) &myCharMsg);
+            // pthread_create(&tcpThread, NULL, sendCharMessage, (void*) &myCharMsg);
 
             // pthread_join(tcpThread,NULL);
         }
+
 
         BeginDrawing();
 
