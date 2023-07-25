@@ -40,6 +40,46 @@ int main(int argc, char const *argv[]) {
     if(b < 0) 
         printError("Bind failed\n");
 
+    seed = time(NULL);
+    srand(seed);
+
+    // Upon establishment connection, server sends back locations of all the fish in the game world
+    fishes = new Fish[fishNum];
+    positions = new Vector2[fishNum];
+    for (int i = 0; i < fishNum; i++) {
+        Vector2 pos = { 100 + rand() % (screenWidth - 200), 100 + rand() % (screenHeight - 200) };
+        printf("pos: %f %f\n", pos.x,pos.y);
+        fishes[i].spawn(pos);
+        positions[i] = pos;
+
+        // Stop fishes from spawning on each other
+        for (int j = 0; j < i; j++) {
+            Vector2 oldPosition = fishes[j].position;
+            Vector2 newPosition = fishes[i].position;
+
+            float xDist = abs(oldPosition.x - newPosition.x);
+            float yDist = abs(oldPosition.y - newPosition.y);
+
+            int xDir = 1;
+            int yDir = 1;
+
+            if (oldPosition.x > newPosition.x) xDir = -1;
+            if (oldPosition.y > newPosition.y) yDir = -1;
+
+            if (xDist + yDist < Fish::size.x + Fish::size.y) {
+                newPosition.x += Fish::size.x / 2.f * xDir;
+                newPosition.y += Fish::size.y / 2.f * xDir;
+                positions[i] = newPosition;
+                fishes[i].position = newPosition;
+
+                oldPosition.x += Fish::size.x / 2.f * yDir * -1;
+                oldPosition.y += Fish::size.y / 2.f * yDir * -1;
+                positions[j] = oldPosition;
+                fishes[j].position = oldPosition;
+            }
+        }
+    }
+
     // listen to socket for connections
     int l = listen(sock, QUEUE_SIZE);
     if(l < 0) 
