@@ -12,6 +12,42 @@
 #define BUFFER_SIZE 10
 #define QUEUE_SIZE 10
 
+struct Fish {
+    Vector2 position { 0 };
+    static Vector2 size;
+
+    Color color = RED;
+
+    bool alive = false;
+
+    Player owner = NONE;
+    int health = 10;
+
+    bool caught = false;
+
+    void spawn(Vector2 pos) {
+        alive = true;
+        position = pos;
+    }
+
+    void draw() {
+        if (!alive) return;
+        Vector2 drawPos = position;
+
+        if (caught) {
+            drawPos.x += (rand() % 10) - 5;
+            drawPos.y += (rand() % 10) - 5;
+        }
+        
+        DrawRectangleV(drawPos, size, color);
+
+        Rectangle rec = { drawPos.x, drawPos.y, size.x, size.y };
+        DrawRectangleLinesEx(rec, 10, BLACK);
+    }
+};
+
+Vector2 Fish::size = { 70, 35 };
+
 void printError(const char* message) {
     perror(message);
     exit(-1);
