@@ -48,6 +48,89 @@ struct Fish {
 
 Vector2 Fish::size = { 70, 35 };
 
+struct Actor {
+    Player p = NONE;
+    bool catching = false;
+    int target = 0;
+    int points = 0;
+};
+
+struct Game {
+    time_t seed { 0 };
+    float elapsed = 0.f;
+
+    int screenWidth = 0;
+    int screenHeight = 0;
+
+    int fishNum = 10;
+    Fish* fishes;
+    Vector2* positions;
+
+    int actorNum = 0;
+    Actor actors[4] {};
+
+    void start() {
+        seed = time(NULL);
+        srand(seed);
+
+        // TODO: get fish locations from server, in order to synchronize locations across clients
+        // Upon establishment connection, server sends back locations of all the fish in the game world
+        fishes = new Fish[fishNum];
+        positions = new Vector2[fishNum];
+        for (int i = 0; i < fishNum; i++) {
+            Vector2 pos = { 100 + rand() % (screenWidth - 200), 100 + rand() % (screenHeight - 200) };
+            printf("pos: %f %f\n", pos.x,pos.y);
+            fishes[i].spawn(pos);
+            positions[i] = pos;
+
+            // Stop fishes from spawning on each other
+            for (int j = 0; j < i; j++) {
+                Vector2 oldPosition = fishes[j].position;
+                Vector2 newPosition = fishes[i].position;
+
+                float xDist = abs(oldPosition.x - newPosition.x);
+                float yDist = abs(oldPosition.y - newPosition.y);
+
+                int xDir = 1;
+                int yDir = 1;
+
+                if (oldPosition.x > newPosition.x) xDir = -1;
+                if (oldPosition.y > newPosition.y) yDir = -1;
+
+                if (xDist + yDist < Fish::size.x + Fish::size.y) {
+                    newPosition.x += Fish::size.x / 2.f * xDir;
+                    newPosition.y += Fish::size.y / 2.f * xDir;
+                    positions[i] = newPosition;
+                    fishes[i].position = newPosition;
+
+                    oldPosition.x += Fish::size.x / 2.f * yDir * -1;
+                    oldPosition.y += Fish::size.y / 2.f * yDir * -1;
+                    positions[j] = oldPosition;
+                    fishes[j].position = oldPosition;
+                }
+            }
+        }
+    }
+
+    void restart() {
+        delete[] fishes;
+        delete[] positions;
+
+        start();
+    }
+
+    void draw() {
+        for (int i = 0; i < fishNum; i++) {
+            fishes[i].draw();
+        }
+    }
+
+    ~Game() {
+        delete[] fishes;
+        delete[] positions;
+    }
+};
+
 void printError(const char* message) {
     perror(message);
     exit(-1);
