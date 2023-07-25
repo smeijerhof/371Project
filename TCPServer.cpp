@@ -7,10 +7,13 @@
 #include <sys/types.h>
 #include <netinet/in.h>
 #include <unistd.h>
+#include <time.h>
+#include "include/raylib.h"
 
 #define SERVER_PORT 65501
 #define BUFFER_SIZE 10
 #define QUEUE_SIZE 10
+#define FISH_NUM 10
 
 struct Fish {
     Vector2 position { 0 };
@@ -54,6 +57,9 @@ void printError(const char* message) {
 }
 
 int main(int argc, char const *argv[]) {
+
+    time_t seed { 0 };
+
     // Hold data read from socket
     // char buffer[BUFFER_SIZE];
     uint16_t buffer[BUFFER_SIZE];
@@ -80,9 +86,9 @@ int main(int argc, char const *argv[]) {
     srand(seed);
 
     // Upon establishment connection, server sends back locations of all the fish in the game world
-    fishes = new Fish[fishNum];
-    positions = new Vector2[fishNum];
-    for (int i = 0; i < fishNum; i++) {
+    Fish* fishes = new Fish[FISH_NUM];
+    Vector2* positions = new Vector2[FISH_NUM];
+    for (int i = 0; i < FISH_NUM; i++) {
         Vector2 pos = { 100 + rand() % (screenWidth - 200), 100 + rand() % (screenHeight - 200) };
         printf("pos: %f %f\n", pos.x,pos.y);
         fishes[i].spawn(pos);
