@@ -11,9 +11,14 @@
 #include "include/raylib.h"
 
 #define SERVER_PORT 65501
-#define BUFFER_SIZE 10
+#define BUFFER_SIZE 32
 #define QUEUE_SIZE 10
 #define FISH_NUM 10
+#define SCREEN_WIDTH 800
+#define SCREEN_HEIGHT 450
+
+enum Player { NONE = 0, ONE, TWO, THREE, FOUR };
+
 
 struct Fish {
     Vector2 position { 0 };
@@ -146,7 +151,6 @@ int main(int argc, char const *argv[]) {
     // Hold data read from socket
     // char buffer[BUFFER_SIZE];
     uint16_t buffer[BUFFER_SIZE];
-    char response[] = "back at you";    // response message
 
     // specify socket to read from 
     struct sockaddr_in channel;
@@ -172,7 +176,7 @@ int main(int argc, char const *argv[]) {
     Fish* fishes = new Fish[FISH_NUM];
     Vector2* positions = new Vector2[FISH_NUM];
     for (int i = 0; i < FISH_NUM; i++) {
-        Vector2 pos = { 100 + rand() % (screenWidth - 200), 100 + rand() % (screenHeight - 200) };
+        Vector2 pos = { 100 + rand() % (SCREEN_WIDTH - 200), 100 + rand() % (SCREEN_HEIGHT - 200) };
         printf("pos: %f %f\n", pos.x,pos.y);
         fishes[i].spawn(pos);
         positions[i] = pos;
@@ -215,23 +219,26 @@ int main(int argc, char const *argv[]) {
     if(connectionSocket < 0)
         printError("Failed to accept\n");
 
-    printf("connection established\n");
-
     // read data from new connection
-    for(int i = 0; i < atoi(argv[1]); i++) {
+    while(1) {
         read(connectionSocket, buffer, BUFFER_SIZE);
-        printf("server: ");
-        // TODO: not being received correctly
-        for(int j = 0; j < 3; j++)
-            printf("%d ", ntohs(buffer[j]));
-        printf("\n");
-        // printf("%s\n", buffer);
-        write(connectionSocket, buffer, BUFFER_SIZE);  
-
-        // if(strcmp(buffer, "hello") == 0) {
-        //     // send response to client
-        //     write(connectionSocket, response, sizeof(response));  
-        // }
+        for(int i = 0; i < BUFFER_SIZE; i++) {
+            buffer[i] = ntohs(buffer[i]);
+        }
+        switch(buffer[0]) {
+            case 0:
+                
+                break;
+            case 1:
+                printf("server: ");
+                for(int j = 0; j < 3; j++)
+                    printf("%d ", ntohs(buffer[j]));
+                printf("\n");
+                // printf("%s\n", buffer);
+                write(connectionSocket, buffer, BUFFER_SIZE);  
+                break;
+            
+        }
     }
 
     // close connections
