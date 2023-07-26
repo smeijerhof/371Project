@@ -16,6 +16,8 @@
 
 enum Player { NONE = 0, ONE, TWO, THREE, FOUR };
 
+#define FISH_NUM 10
+
 struct Fish {
     Vector2 position { 0 };
     static Vector2 size;
@@ -67,7 +69,6 @@ struct Game {
     int screenHeight = 0;
 
     int fishNum = 10;
-    int aliveFish = fishNum;
     Fish* fishes;
     Vector2* positions;
 
@@ -84,7 +85,6 @@ struct Game {
         positions = new Vector2[fishNum];
         for (int i = 0; i < fishNum; i++) {
             Vector2 pos = { 100 + rand() % (screenWidth - 200), 100 + rand() % (screenHeight - 200) };
-            printf("pos: %f %f\n", pos.x,pos.y);
             fishes[i].spawn(pos);
             positions[i] = pos;
 
@@ -125,11 +125,9 @@ struct Game {
     }
 
     void draw() {
-        printf("starting game draw\n");
-        for (int i = 0; i < fishNum; i++) {
+        for (int i = 0; i < FISH_NUM; i++) {
             fishes[i].draw();
         }
-        printf("game draw complete\n");
     }
 
     ~Game() {

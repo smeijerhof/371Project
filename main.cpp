@@ -15,9 +15,10 @@
 #include <pthread.h>
 #include <math.h>
 
-#define SERVER_PORT 65502
+#define SERVER_PORT 65500
 #define IP "localhost"
 #define BUFFER_SIZE 32
+#define FISH_NUM 10
 
 Game* game;
 
@@ -74,40 +75,51 @@ void* sendConnectMessage(void* msg) {
     buffer[0] = htons(myMsg->token);
     ptr = buffer + 1;
 
-    write(myMsg->serverSocket, buffer, ptr-buffer);
+    // printf("sending\n");
+    write(myMsg->serverSocket, buffer, 2*(ptr-buffer));
 
     uint16_t response[BUFFER_SIZE];
-    read(myMsg->serverSocket, response, BUFFER_SIZE);
+    read(myMsg->serverSocket, response, 2*BUFFER_SIZE);
+    // printf("read complete\n");
     if(ntohs(response[0]) == 1000) {
         printf("Could not establish connection; there are already 4 players in the game\n");
         close(myMsg->serverSocket);
         CloseWindow();
         return 0;
     }
+
+    // TESTING: print vectors of all fish
+    // for(int i = 1; i < (2*FISH_NUM)+1; i+=2) {
+    //         printf("network: %d %d\nhost: %d %d\nfloat: %.1f %.1f\n\n",
+    //                 response[i], response[i+1],
+    //                 ntohs(response[i]),ntohs(response[i+1]),
+    //                 (float) ntohs(response[i]), (float) ntohs(response[i+1]));
+    // }
     Actor newActor;
     newActor.p = ntohs(response[0]);
 
+    
+
     game->actors[game->actorNum++] = newActor;
-    game->aliveFish = ntohs(response[1]);
 
-    int i = 0;
-    for(; i < game->aliveFish; i++) {
-        Vector2 fishPos = {(float) ntohs(response[2+(2*i)]), (float) ntohs(response[2+(2*i)+1])};
+    game->fishes = new Fish[FISH_NUM];
+    game->positions = new Vector2[FISH_NUM];
+
+    for(int i = 0; i < FISH_NUM; i++) {
+        float fishX = (float) ntohs(response[1+(2*i)]);
+        float fishY = (float) ntohs(response[1+(2*i)+1]);
+        Vector2 fishPos = {fishX, fishY};
+
         game->fishes[i].spawn(fishPos);
         game->positions[i] = fishPos;
-    }
-    // don't draw remaining fish
-    for(; i < game->fishNum; i++) {
-        Vector2 fishPos = {0,0};
-        game->fishes[i].spawn(fishPos);
-        game->positions[i] = fishPos;
-        game->fishes[i].alive = false;
+        if(fishX == 1000 || fishY == 1000) {
+            game->fishes[i].alive = false;
+        }
     }
 
-    //0 - player number
-    //1,2 - X,Y of fish 1
-    // ...
-    //19,20 - X,Y of fish 10
+    for(int i = 0; i < FISH_NUM; i++) {
+        printf("{%.1f, %.1f}\n", game->fishes[i].position.x, game->fishes[i].position.y);
+    }
 
     return 0;
 }
@@ -129,11 +141,11 @@ void* sendMouseMessage(void* msg) {
     ptr = buffer + 6;
 
     // free(msg);
-    printf("client: ");
-    for(int i = 0; i < 3; i++) {
-        printf("%d ", ntohs(buffer[i]));
-    }
-    printf("\n");
+    // printf("client: ");
+    // for(int i = 0; i < 3; i++) {
+    //     printf("%d ", ntohs(buffer[i]));
+    // }
+    // printf("\n");
 
     // printf("%ld\n",ptr - buffer);
 
@@ -141,10 +153,10 @@ void* sendMouseMessage(void* msg) {
 
     uint16_t response[BUFFER_SIZE];
     read(myMsg->serverSocket, response, BUFFER_SIZE);
-    printf("response: ");
-    for(int i = 0; i < 3; i++)
-        printf("%d ", ntohs(buffer[i]));
-    printf("\n");
+    // printf("response: ");
+    // for(int i = 0; i < 3; i++)
+    //     printf("%d ", ntohs(buffer[i]));
+    // printf("\n");
 
     // switch((char*) msg) {
     //     case "mouse":
@@ -176,8 +188,13 @@ int main() {
     myConnMsg->serverSocket = myServerSocket;
     pthread_t connThread;
 
-    pthread_create(&tcpThread, NULL, sendConnectMessage, (void*) myConnMsg);
-    // game.start();
+    pthread_create(&connThread, NULL, sendConnectMessage, (void*) myConnMsg);
+    pthread_join(connThread, NULL);
+
+    // printf("game starting!\n");
+    // for(int i = 0; i < FISH_NUM; i++) {
+    //     printf("{%.1f,%.1f} %d\n", game->fishes[i].position.x, game->fishes[i].position.y,game->fishes[i].alive);
+    // }
 
     InitWindow(game->screenWidth, game->screenHeight, "Window Name");
 
@@ -214,11 +231,9 @@ int main() {
             game->fishes[self.target].alive = false;
             self.catching = false;
             self.points++;
-            game->aliveFish--;
         }
 
         // Multi-threaded client Testing
-        // TODO: switch back to uint16_t? Problem was with return, not data passed
         // printf("%d\n",(int) (fmod(game.elapsed,0.1f) * 100));
         if (int(fmod(game->elapsed, 0.1f) * 100) == 0) {
             struct crsrMsg myMsg;
@@ -229,8 +244,6 @@ int main() {
 
             pthread_create(&tcpThread, NULL, sendMouseMessage, (void*) &myMsg);
         }
-
-        printf("oogy\n");
 
         BeginDrawing();
 
