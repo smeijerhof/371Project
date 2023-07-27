@@ -11,7 +11,7 @@
 #include "include/raylib.h"
 #include "include/game.h"
 
-#define SERVER_PORT 65500
+#define SERVER_PORT 65501
 #define BUFFER_SIZE 32
 #define QUEUE_SIZE 10
 #define FISH_NUM 10
@@ -26,8 +26,7 @@ void printError(const char* message) {
 int main(int argc, char const *argv[]) {
 
     // Hold data read from socket
-    // char buffer[BUFFER_SIZE];
-    uint16_t buffer[BUFFER_SIZE];
+    uint16_t input[BUFFER_SIZE];
 
     // specify socket to read from 
     struct sockaddr_in channel;
@@ -50,6 +49,12 @@ int main(int argc, char const *argv[]) {
     Game game;
     game.start();
 
+    for(int i = 0; i < FISH_NUM; i++) {
+        // printf("{%.1f, %.1f}->{%d, %d}\n",
+        // game.fishes[i].position.x, game.fishes[i].position.y,
+        // htons((int) (game.fishes[i].position.x)), htons((int) (game.fishes[i].position.y)));
+    }
+
     // listen to socket for connections
     int l = listen(sock, QUEUE_SIZE);
     if(l < 0) 
@@ -62,16 +67,23 @@ int main(int argc, char const *argv[]) {
 
     while(1) {
         // read data from connection, convert to appropriate endian
-        read(connectionSocket, buffer, BUFFER_SIZE);
+        // TODO: limit loop to only convert ints read
+        read(connectionSocket, input, 2*BUFFER_SIZE);
+        // printf("%d->%d\n", input[0], ntohs(input[0]));
+
+
         for(int i = 0; i < BUFFER_SIZE; i++) {
-            buffer[i] = ntohs(buffer[i]);
+            // printf("%d -> ", input[i]);
+            input[i] = ntohs(input[i]);
+            // printf("%d\n", input[i]);
         }
         uint16_t response[BUFFER_SIZE];
         int responseLength = 0;
 
-        switch(buffer[0]) {
+
+        switch(input[0]) {
             case 0:
-            // printf("connect message\n");
+                // printf("connect message\n");
 
                 if (game.actorNum >= 4) {
                     response[responseLength++] = htons(1000);
@@ -80,7 +92,7 @@ int main(int argc, char const *argv[]) {
                     response[responseLength++] = htons(game.actorNum++);
                     for(int i = 0; i < game.fishNum; i++) {
                         if(game.fishes[i].alive) {
-                            printf("{%.1f,%.1f}\n", game.fishes[i].position.x, game.fishes[i].position.y);
+                            // printf("{%.1f,%.1f}\n", game.fishes[i].position.x, game.fishes[i].position.y);
                             // printf("host: %f %f\nuint: %d %d\nnetwork: %d %d\n\n",
                             // game.fishes[i].position.x, game.fishes[i].position.y,
                             // (uint16_t) game.fishes[i].position.x, (uint16_t) game.fishes[i].position.y,
@@ -95,6 +107,10 @@ int main(int argc, char const *argv[]) {
                         }
                     }
                 }
+                // for(int i = 0; i < BUFFER_SIZE; i++) {
+                //     printf("%d, ",response[i]);
+                // }
+                // printf("\n");
                 break;
             case 1:
                 // printf("mouse message\n");
@@ -107,7 +123,7 @@ int main(int argc, char const *argv[]) {
                 break;
         }
         // printf("writing %d\n-----------------------------------------------------\n", 2*responseLength);
-        write(connectionSocket, response, 2*responseLength);  
+        write(connectionSocket, response, 2*BUFFER_SIZE);//2*responseLength);  
         
     }
 

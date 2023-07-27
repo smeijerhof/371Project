@@ -15,7 +15,7 @@
 #include <pthread.h>
 #include <math.h>
 
-#define SERVER_PORT 65500
+#define SERVER_PORT 65501
 #define IP "localhost"
 #define BUFFER_SIZE 32
 #define FISH_NUM 10
@@ -68,18 +68,19 @@ struct connMsg {
 };
 
 void* sendConnectMessage(void* msg) {
-    uint16_t buffer[BUFFER_SIZE];
-    uint16_t* ptr = buffer;
+    uint16_t outMsg[BUFFER_SIZE];
+    int msgSize = 0;
 
     struct connMsg* myMsg = (struct connMsg*) msg;
-    buffer[0] = htons(myMsg->token);
-    ptr = buffer + 1;
+    outMsg[msgSize++] = htons(myMsg->token);
 
-    // printf("sending\n");
-    write(myMsg->serverSocket, buffer, 2*(ptr-buffer));
+    // printf("sending %d/%d. %ld bytes\n", ntohs(outMsg[0]), outMsg[0], 
+    write(myMsg->serverSocket, outMsg, 2*msgSize);
+    // write(myMsg->serverSocket, msg, 2*msgSize);
 
     uint16_t response[BUFFER_SIZE];
     read(myMsg->serverSocket, response, 2*BUFFER_SIZE);
+
     // printf("read complete\n");
     if(ntohs(response[0]) == 1000) {
         printf("Could not establish connection; there are already 4 players in the game\n");
@@ -89,7 +90,10 @@ void* sendConnectMessage(void* msg) {
     }
 
     // TESTING: print vectors of all fish
-    // for(int i = 1; i < (2*FISH_NUM)+1; i+=2) {
+    // for(int i = 0; i < BUFFER_SIZE; i++) {
+    //     printf("%d->%d\n",response[i], ntohs(response[i]));
+    // }
+    // for(int i = 0; i < (2*FISH_NUM)+1; i+=2) {
     //         printf("network: %d %d\nhost: %d %d\nfloat: %.1f %.1f\n\n",
     //                 response[i], response[i+1],
     //                 ntohs(response[i]),ntohs(response[i+1]),
@@ -118,7 +122,7 @@ void* sendConnectMessage(void* msg) {
     }
 
     for(int i = 0; i < FISH_NUM; i++) {
-        printf("{%.1f, %.1f}\n", game->fishes[i].position.x, game->fishes[i].position.y);
+        // printf("{%.1f, %.1f}\n", game->fishes[i].position.x, game->fishes[i].position.y);
     }
 
     return 0;
@@ -126,19 +130,17 @@ void* sendConnectMessage(void* msg) {
 
 void* sendMouseMessage(void* msg) {
     // Based on message needing to be sent from server, client sends appropriate token, awaits response on new thread
-    uint16_t buffer[BUFFER_SIZE];
-    uint16_t* ptr = buffer;
+    uint16_t outMsg[BUFFER_SIZE];
+    int msgSize = 0;
 
     struct crsrMsg* myMsg = (struct crsrMsg*) msg;
 
     // printf("%d %d\n", myMsg->mouseX, myMsg->mouseY);
     // printf("%d %d\n", htons(myMsg->mouseX), htons(myMsg->mouseY));
 
-    buffer[0] = htons(myMsg->token);
-    buffer[1] = htons(myMsg->mouseX);
-    buffer[2] = htons(myMsg->mouseY);
-
-    ptr = buffer + 6;
+    outMsg[msgSize++] = htons(myMsg->token);
+    outMsg[msgSize++] = htons(myMsg->mouseX);
+    outMsg[msgSize++] = htons(myMsg->mouseY);
 
     // free(msg);
     // printf("client: ");
@@ -149,10 +151,10 @@ void* sendMouseMessage(void* msg) {
 
     // printf("%ld\n",ptr - buffer);
 
-    write(myMsg->serverSocket, buffer, ptr - buffer);
+    write(myMsg->serverSocket, msg, 2*BUFFER_SIZE);//2*msgSize);
 
     uint16_t response[BUFFER_SIZE];
-    read(myMsg->serverSocket, response, BUFFER_SIZE);
+    read(myMsg->serverSocket, response, 2*BUFFER_SIZE);
     // printf("response: ");
     // for(int i = 0; i < 3; i++)
     //     printf("%d ", ntohs(buffer[i]));
