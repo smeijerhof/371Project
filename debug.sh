@@ -1,4 +1,4 @@
-make nixdebug
+make debug
 cd bin
 ./debug
 cd ../ 
