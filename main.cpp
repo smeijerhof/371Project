@@ -205,9 +205,6 @@ int main() {
     while (!WindowShouldClose()) {
         
         game->elapsed += GetFrameTime();
-        if (IsKeyPressed(KEY_R)) {
-            game->restart();
-        }
 
         if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
             Vector2 mp = GetMousePosition();
