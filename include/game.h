@@ -64,25 +64,25 @@ struct Actor {
         unsigned char buffer[256];
     };
 
-    ActorMessage createMessage(Vector2 position) {
-        ActorMessage msg;
-        buffer[0] = points;
+//     ActorMessage createMessage(Vector2 position) {
+//         ActorMessage msg;
+//         buffer[0] = points;
 
-        unsigned int x = (unsigned int) position.x;
-        unsigned int y = (unsigned int) position.y;
+//         unsigned int x = (unsigned int) position.x;
+//         unsigned int y = (unsigned int) position.y;
         
-        buffer[1] = (x >> 24) & 0xFF;
-        buffer[2] = (x >> 16) & 0xFF;
-        buffer[3] = (x >> 8) & 0xFF;
-        buffer[4] = x & 0xFF;
+//         buffer[1] = (x >> 24) & 0xFF;
+//         buffer[2] = (x >> 16) & 0xFF;
+//         buffer[3] = (x >> 8) & 0xFF;
+//         buffer[4] = x & 0xFF;
 
-        buffer[5] = (y >> 24) & 0xFF;
-        buffer[6] = (y >> 16) & 0xFF;
-        buffer[7] = (y >> 8) & 0xFF;
-        buffer[8] = y & 0xFF;
+//         buffer[5] = (y >> 24) & 0xFF;
+//         buffer[6] = (y >> 16) & 0xFF;
+//         buffer[7] = (y >> 8) & 0xFF;
+//         buffer[8] = y & 0xFF;
 
-        return msg;
-    }
+//         return msg;
+//     }
 };
 
 struct Game {
