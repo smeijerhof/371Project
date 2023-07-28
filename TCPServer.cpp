@@ -43,8 +43,12 @@ int main(int argc, char const *argv[]) {
 
     // bind socket to supplied address, port
     int b = bind(sock, (struct sockaddr *) &channel, sizeof(channel));
-    if(b < 0) 
+    if(b < 0) {
         printError("Bind failed\n");
+    } else {
+        printf("Listening on port %d...\n", SERVER_PORT);
+    }
+        
 
     // Once connected to socket, load game
     Game game;
