@@ -6,3 +6,9 @@ build:
 
 server:
 	g++ TCPServer.cpp -o bin/server
+
+clean:
+	rm -f ./bin/debug ./bin/game ./bin/server
+
+kill:
+	kill -9 $(shell lsof -t -i:65500)
