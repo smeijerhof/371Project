@@ -18,9 +18,6 @@
 #include "../include/def.h"
 //
 
-#define BUFFER_SIZE 32
-#define QUEUE_SIZE 10
-
 void printError(const char* message) {
     perror(message);
     exit(-1);
