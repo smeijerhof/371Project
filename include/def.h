@@ -9,3 +9,6 @@
 
 #define SCREEN_WIDTH 800
 #define SCREEN_HEIGHT 450
+
+#define FISH_WIDTH 100
+#define FISH_HEIGHT 50
