@@ -1,16 +1,23 @@
 #pragma once
 
 #include "raylib.h"
+#include "def.h"
+
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <time.h>
 
 struct Fish {
     Vector2 pos {};
     bool alive = false;
     bool taken = false;
 
-    void spawn(Vector2 p) {
+    void spawn(int x, int y) {
         alive = true;
         taken = false;
-        pos = p;
+        pos = {x, y};
     }
 
     void draw() {
@@ -26,7 +33,7 @@ struct Fish {
         
         DrawRectangleV(drawPos, {FISH_WIDTH, FISH_HEIGHT}, c);
 
-        Rectangle rec = { drawPos.x, drawPos.y, size.x, size.y };
+		Rectangle rec = { drawPos.x, drawPos.y, FISH_WIDTH, FISH_HEIGHT };
         DrawRectangleLinesEx(rec, 10, BLACK);
     }
 };
