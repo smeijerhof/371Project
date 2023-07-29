@@ -30,7 +30,7 @@ int main(int argc, char const *argv[]) {
 
         switch(input[0]) {
             case 0:
-                // printf("connect message\n");
+                printf("Sending Connect Message\n");
 
                 if (game.actorNum >= 4) {
                     response[responseLength++] = htons(1000);
