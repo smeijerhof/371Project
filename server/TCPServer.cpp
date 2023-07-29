@@ -15,14 +15,11 @@
 // Project Libs
 #include "../include/raylib.h"
 #include "../include/game.h"
+#include "../include/def.h"
 //
 
-#define SERVER_PORT 65501
 #define BUFFER_SIZE 32
 #define QUEUE_SIZE 10
-#define FISH_NUM 10
-#define SCREEN_WIDTH 800
-#define SCREEN_HEIGHT 450
 
 void printError(const char* message) {
     perror(message);
