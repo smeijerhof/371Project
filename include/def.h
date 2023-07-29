@@ -1,5 +1,7 @@
 #pragma once
 
+#define SERVER_PORT 65501
+
 #define FISH_NUM 10
 
 #define SCREEN_WIDTH 800
