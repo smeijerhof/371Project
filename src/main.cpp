@@ -1,5 +1,5 @@
-#include "include/raylib.h"
-#include "include/game.h"
+#include "../include/raylib.h"
+#include "../include/game.h"
 
 #include <iostream>
 #include <time.h>
