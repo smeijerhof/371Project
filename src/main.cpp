@@ -1,22 +1,6 @@
-#include "../include/raylib.h"
 #include "../include/game.h"
-#include "../include/def.h"
 
-#include <iostream>
-#include <time.h>
-#include <stdlib.h>
-
-#include <stdio.h>
-#include <string.h>
-#include <sys/socket.h>
-#include <sys/types.h>
-#include <netinet/in.h>
-#include <netdb.h>
-#include <unistd.h>
-#include <pthread.h>
-#include <math.h>
-
-Game* game;
+Game game;
 
 void printError(const char* message) {
     perror(message);
@@ -171,11 +155,7 @@ void* sendMouseMessage(void* msg) {
 int main() {
     pthread_t tcpThread;
 
-    game = (Game*) malloc(sizeof(Game));
-
-    game->screenWidth = 800;
-    game->screenHeight = 450;
-
+    //game = (Game*) malloc(sizeof(Game));
 
     int myServerSocket = connectToServer();
     // printf("serverSocket: %d\n", myServerSocket);
@@ -194,7 +174,7 @@ int main() {
     //     printf("{%.1f,%.1f} %d\n", game->fishes[i].position.x, game->fishes[i].position.y,game->fishes[i].alive);
     // }
 
-    InitWindow(game->screenWidth, game->screenHeight, "Window Name");
+    InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "Window Name");
 
     SetTargetFPS(30); 
 
@@ -202,31 +182,30 @@ int main() {
 
     while (!WindowShouldClose()) {
         
-        game->elapsed += GetFrameTime();
+        game.elapsed += GetFrameTime();
 
         if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
             Vector2 mp = GetMousePosition();
-            for (int i = 0; i < game->fishNum; i++) {
-                if (mp.x > game->fishes[i].position.x && mp.x < game->fishes[i].position.x + Fish::size.x && mp.y > game->fishes[i].position.y && mp.y < game->fishes[i].position.y + Fish::size.y && game->fishes[i].alive) {
+            for (int i = 0; i < FISH_NUM; i++) {
+                if (mp.x > game.fishes[i].pos.x && mp.x < game.fishes[i].pos.x + FISH_WIDTH && mp.y > game.fishes[i].pos.y && mp.y < game.fishes[i].pos.y + FISH_HEIGHT && game.fishes[i].alive) {
                     // REQUEST TO CATCH
                     if (self.catching) break;
                     self.catching = true;
                     self.target = i;
-                    game->fishes[i].color = GREEN;
-                    game->fishes[i].caught = true;
+                    game.fishes[i].taken = true;
                 }
             }
         }
 
         if (IsKeyPressed(KEY_Z) && self.catching) {
-            game->fishes[self.target].health--;
+            //game->fishes[self.target].health--;
         } 
 
-        if (game->fishes[self.target].health <= 0 && self.catching & game->fishes[self.target].alive) {
+        /*if (game->fishes[self.target].health <= 0 && self.catching & game->fishes[self.target].alive) {
             game->fishes[self.target].alive = false;
             self.catching = false;
             self.points++;
-        }
+        }*/
 
         // Multi-threaded client Testing
         // printf("%d\n",(int) (fmod(game.elapsed,0.1f) * 100));
@@ -246,19 +225,18 @@ int main() {
 
             DrawFPS(20, 20);
             DrawText(TextFormat("Points = %d", self.points), 20, 40, 20, WHITE);
-            DrawText(TextFormat("Time = %.1f", game->elapsed), 20, 60, 20, WHITE);
+            DrawText(TextFormat("Time = %.1f", game.elapsed), 20, 60, 20, WHITE);
 
             if (self.catching) {
-                DrawText("Fish Hooked!", (game->screenWidth - MeasureText("Fish Hooked!", 50)) / 2.f, 20, 50, WHITE);
-                DrawText("Press Z!", (game->screenWidth - MeasureText("Press Z!", 35)) / 2.f, 70, 35, WHITE);
+                DrawText("Fish Hooked!", (SCREEN_WIDTH - MeasureText("Fish Hooked!", 50)) / 2.f, 20, 50, WHITE);
+                DrawText("Press Z!", (SCREEN_WIDTH - MeasureText("Press Z!", 35)) / 2.f, 70, 35, WHITE);
             }
 
-            game->draw();
+            game.draw();
 
         EndDrawing();
     }
 
-    free(game);
     close(myServerSocket);
     CloseWindow();
     return 0;
