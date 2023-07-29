@@ -31,6 +31,8 @@ struct ServerState {
     uint16_t input[BUFFER_SIZE];
     int sock;
 
+    Fish fishes[FISH_NUM];
+
     void init() {
         // specify socket to read from 
         memset(&channel, 0, sizeof(channel));
@@ -49,13 +51,14 @@ struct ServerState {
             printError("Bind failed\n");  
     }
 
-    Vector2* spawnFish() {
-      Vector2* positions = new Vector2[FISH_NUM];
-
-      for (int i = 0; i < FISH_NUM; i++)
-        positions[i] = {
-          100 + rand() % (SCREEN_WIDTH - 200),
-          100 + rand() % (SCREEN_HEIGHT - 200)
-        };
+    void spawnFish() {
+      for (int i = 0; i < FISH_NUM; i++) {
+          Fish f;
+          f.spawn(
+             100 + rand() % (SCREEN_WIDTH - 200),
+              100 + rand() % (SCREEN_HEIGHT - 200) 
+          );
+          fishes[i] = f;
+      }
     }
 };
