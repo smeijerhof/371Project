@@ -1,6 +1,9 @@
 #pragma once
 
-#include <time.h>
+#include "../include/raylib.h"
+#include "../include/fish.h"
+#include "../include/def.h"
+
 #include <iostream>
 #include <time.h>
 #include <stdlib.h>
@@ -14,10 +17,6 @@
 #include <unistd.h>
 #include <pthread.h>
 #include <math.h>
-
-#include "raylib.h"
-#include "def.h"
-#include "fish.h"
 
 enum Player { NONE = 0, ONE, TWO, THREE, FOUR };
 
