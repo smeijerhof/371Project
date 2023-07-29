@@ -1,6 +1,10 @@
 #include "../include/server.h"
 
 int main(int argc, char const *argv[]) {
+    time_t seed { 0 };
+    seed = time(NULL);
+    srand(seed);
+    
     ServerState server;
 
     server.init();
