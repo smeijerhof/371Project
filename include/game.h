@@ -101,6 +101,7 @@ struct Game {
     int actorNum = 0;
     Actor actors[4] {};
     int totalActors = 0;
+    int clientID;
 
     // New method to update game state based on client's mouse positions
     void updateGameState(int clientID, int mouseX, int mouseY) {
