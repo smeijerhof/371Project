@@ -5,4 +5,4 @@ build:
 	g++ src/*.cpp -o bin/game -O3 -Wno-missing-braces -I include/ -Llib/ -lnixraylib -lGL -lm -lpthread -ldl -lrt -lX11
 
 host:
-	g++ TCPServer.cpp -o bin/server -I include/
+	g++ server/*.cpp -o bin/server -I include/
