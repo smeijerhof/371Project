@@ -21,7 +21,34 @@
 #include "def.h"
 //
 
+void printError(const char* message) {
+    perror(message);
+    exit(-1);
+}
+
 struct ServerState {
+    struct sockaddr_in channel {};
+    uint16_t input[BUFFER_SIZE];
+    int sock;
+
+    void init() {
+        // specify socket to read from 
+        memset(&channel, 0, sizeof(channel));
+        channel.sin_family = AF_INET;
+        channel.sin_addr.s_addr = htonl(INADDR_ANY);
+        channel.sin_port = htons(SERVER_PORT);
+    
+        // return file descriptor for socket
+        sock = socket(AF_INET, SOCK_STREAM, 0);
+        if(sock < 0)
+            printError("Failed to create new socket\n");
+    
+        // bind socket to supplied address, port
+        int b = bind(sock, (struct sockaddr *) &channel, sizeof(channel));
+        if(b < 0) 
+            printError("Bind failed\n");  
+    }
+
     Vector2* spawnFish() {
       Vector2* positions = new Vector2[FISH_NUM];
 
