@@ -31,9 +31,12 @@ struct ServerState {
     uint16_t input[BUFFER_SIZE];
     int sock;
 
+    int actorNum;
+
     Fish fishes[FISH_NUM];
 
     void init() {
+        actorNum = 0;
         // specify socket to read from 
         memset(&channel, 0, sizeof(channel));
         channel.sin_family = AF_INET;
