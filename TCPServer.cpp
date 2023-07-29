@@ -29,6 +29,11 @@ void* clientHandler(void* arg) {
     unsigned char idBuffer[2] = { 'I', clientID };
     write(clientSocket, idBuffer, sizeof(idBuffer));
 
+    // Calculate the size of the message buffer based on the number of fish positions
+    size_t bufferSize = 1 + FISH_NUM * 4;
+    unsigned char* msgBuffer = new unsigned char[bufferSize];
+    msgBuffer[0] = 0; // Points
+
     while (true) {
         // Receive data from the client (mouse positions in serialized form)
         int bytesRead = read(clientSocket, buffer, sizeof(buffer));
@@ -48,28 +53,29 @@ void* clientHandler(void* arg) {
         game.updateGameState(clientID, mouseX, mouseY);
         mtx.unlock();
 
-        // Create the message containing the game fish positions
-        Actor::ActorMessage msg;
-        msg.buffer[0] = 0; // Points
-
+        // Fill the message buffer with the game fish positions
         mtx.lock();
         for (int i = 0; i < FISH_NUM; i++) {
             int x = (int)game.positions[i].x;
             int y = (int)game.positions[i].y;
 
-            msg.buffer[(i * 4) + 1] = (x >> 8) & 0xFF;
-            msg.buffer[(i * 4) + 2] = x & 0xFF;
-            msg.buffer[(i * 4) + 3] = (y >> 8) & 0xFF;
-            msg.buffer[(i * 4) + 4] = y & 0xFF;
+            msgBuffer[(i * 4) + 1] = (x >> 8) & 0xFF;
+            msgBuffer[(i * 4) + 2] = x & 0xFF;
+            msgBuffer[(i * 4) + 3] = (y >> 8) & 0xFF;
+            msgBuffer[(i * 4) + 4] = y & 0xFF;
         }
         mtx.unlock();
 
         // Send the message containing the game fish positions to the client
-        write(clientSocket, msg.buffer, sizeof(msg.buffer));
+        write(clientSocket, msgBuffer, bufferSize);
     }
+
+    // Clean up the dynamically allocated buffer
+    delete[] msgBuffer;
 
     return NULL;
 }
+
 
 int main() {
     int serverSocket, clientSocket;

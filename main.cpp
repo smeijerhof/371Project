@@ -53,20 +53,6 @@ bool leftMouseButtonPressed = false;
 bool zKeyPressed = false;
 bool sendMousePositionRunning = false;
 
-// // Function to handle keyboard input in a separate thread
-// void* keyboardInputHandler(void* args) {
-//     while (true) {
-//         int ch = nonBlockingRead();
-//         if (ch != EOF) {
-//             if (ch == 'z') {
-//                 mtxZKeyPressed.lock();
-//                 zKeyPressed = true;
-//                 mtxZKeyPressed.unlock();
-//             }
-//         }
-//     }
-// }
-
 // Create a struct to hold both Game and sockfd
 struct SendMousePositionArgs {
     Game* game;
@@ -78,7 +64,7 @@ void* sendMousePositionToServer(void* args) {
     SendMousePositionArgs* sendArgs = static_cast<SendMousePositionArgs*>(args);
     Game* game = sendArgs->game;
     int sockfd = sendArgs->sockfd;
-    int clientID = game->clientID;
+    unsigned char clientID = game->clientID;
 
     while (sendMousePositionRunning) { // Use the flag to control the loop
         usleep(TIME_INTERVAL_MS * 1000); // Sleep for the specified time interval
@@ -100,6 +86,9 @@ void* sendMousePositionToServer(void* args) {
             std::cerr << "Not all data was sent." << std::endl;
         }
     }
+    // Free the memory allocated for the SendMousePositionArgs struct
+    delete sendArgs;
+    
     return NULL;
 }
 
@@ -128,10 +117,11 @@ int main() {
     // Create the game instance
     Game* game = new Game();
     game->start();
+    game->clientID = -1; // Initialize the clientID to an invalid value
 
-    // // Start keyboard input handler thread
-    // pthread_t keyboardThread;
-    // pthread_create(&keyboardThread, NULL, keyboardInputHandler, NULL);
+    // Create the window and set target FPS
+    InitWindow(game->screenWidth, game->screenHeight, "TCP Game Client");
+    SetTargetFPS(60);
 
     // Create the struct to hold Game and sockfd
     SendMousePositionArgs* sendArgs = new SendMousePositionArgs();
@@ -141,10 +131,6 @@ int main() {
     // Start sending mouse position to the server thread
     pthread_t sendMousePositionThread;
     pthread_create(&sendMousePositionThread, NULL, sendMousePositionToServer, sendArgs);
-
-    // Create the window and set target FPS
-    InitWindow(game->screenWidth, game->screenHeight, "TCP Game Client");
-    SetTargetFPS(60);
 
     // Wait until the client receives its unique ID from the server
     while (true) {
@@ -175,6 +161,10 @@ int main() {
             break;
         }
     }
+    
+    // Buffer to store the received fish positions message
+    size_t bufferSize = 1 + FISH_NUM * 4;
+    unsigned char recvBuffer[bufferSize] = { 0 };
 
     while (!WindowShouldClose()) {
         // Update mouse position
@@ -224,6 +214,29 @@ int main() {
             mtxZKeyPressed.unlock();
         }
 
+        // Receive the fish positions message from the server
+        int bytesRead = read(sockfd, recvBuffer, bufferSize);
+        if (bytesRead <= 0) {
+            // Server disconnected or error occurred
+            close(sockfd);
+            return 1;
+        }
+
+        // Extract points from the received buffer
+        unsigned char points = recvBuffer[0];
+        // Update the client's points
+        game->actors[game->actorNum].points = points;
+
+        // Extract fish positions and update the game state
+        mtxGame.lock();
+        for (int i = 0; i < FISH_NUM; i++) {
+            int x = (recvBuffer[(i * 4) + 1] << 8) | recvBuffer[(i * 4) + 2];
+            int y = (recvBuffer[(i * 4) + 3] << 8) | recvBuffer[(i * 4) + 4];
+            game->positions[i].x = x;
+            game->positions[i].y = y;
+        }
+        mtxGame.unlock();
+
         // Clear the screen and draw the game elements
         BeginDrawing();
         ClearBackground(RAYWHITE);
@@ -243,7 +256,6 @@ int main() {
     }
 
     // Clean up and close the window
-    // pthread_join(keyboardThread, NULL);
     pthread_join(sendMousePositionThread, NULL);
     delete game;
     CloseWindow();
