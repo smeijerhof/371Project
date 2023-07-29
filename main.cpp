@@ -9,7 +9,6 @@
 #include <fcntl.h>
 #include <arpa/inet.h>
 #include <vector>
-#include <execinfo.h>
 
 #include "include/raylib.h"
 #include "include/game.h"
@@ -55,9 +54,7 @@ bool zKeyPressed = false;
 bool sendMousePositionRunning = false;
 
 // Function to handle keyboard input in a separate thread
-void* keyboardInputHandler(void* arg) {
-    (void)arg; // Unused parameter
-
+void* keyboardInputHandler(void* args) {
     while (true) {
         int ch = nonBlockingRead();
         if (ch != EOF) {
@@ -68,14 +65,19 @@ void* keyboardInputHandler(void* arg) {
             }
         }
     }
-
-    return NULL;
 }
 
+// Create a struct to hold both Game and sockfd
+struct SendMousePositionArgs {
+    Game* game;
+    int sockfd;
+};
+
 // Function to send mouse position and client ID to the server on a new thread
-void* sendMousePositionToServer(void* arg) {
-    Game* game = static_cast<Game*>(arg);
-    int sockfd = game->sockfd;
+void* sendMousePositionToServer(void* args) {
+    SendMousePositionArgs* sendArgs = static_cast<SendMousePositionArgs*>(args);
+    Game* game = sendArgs->game;
+    int sockfd = sendArgs->sockfd;
     int clientID = game->clientID;
 
     while (sendMousePositionRunning) { // Use the flag to control the loop
@@ -89,11 +91,10 @@ void* sendMousePositionToServer(void* arg) {
         unsigned char buffer[5] = { 0 };
         buffer[0] = 'M';
         buffer[1] = clientID; // Send the client's unique ID to the server
-        buffer[2] = static_cast<unsigned char>(mp.x);
-        buffer[3] = static_cast<unsigned char>(mp.y);
+        buffer[2] = (unsigned char)(mp.x);
+        buffer[3] = (unsigned char)(mp.y);
         write(sockfd, buffer, sizeof(buffer));
     }
-
     return NULL;
 }
 
@@ -122,18 +123,23 @@ int main() {
     // Create the game instance
     Game* game = new Game();
     game->start();
-    game->sockfd = sockfd;
-    game->clientID = -1;
-
-    // Create thread objects
-    pthread_t keyboardThread;
-    pthread_t sendMousePositionThread;
 
     // Start keyboard input handler thread
-    if (pthread_create(&keyboardThread, NULL, keyboardInputHandler, NULL) != 0) {
-        std::cerr << "Failed to create keyboard input handler thread." << std::endl;
-        return 1;
-    }
+    pthread_t keyboardThread;
+    pthread_create(&keyboardThread, NULL, keyboardInputHandler, NULL);
+
+    // Create the struct to hold Game and sockfd
+    SendMousePositionArgs* sendArgs = new SendMousePositionArgs();
+    sendArgs->game = game;
+    sendArgs->sockfd = sockfd;
+
+    // Start sending mouse position to the server thread
+    pthread_t sendMousePositionThread;
+    pthread_create(&sendMousePositionThread, NULL, sendMousePositionToServer, sendArgs);
+
+    // Create the window and set target FPS
+    InitWindow(game->screenWidth, game->screenHeight, "TCP Game Client");
+    SetTargetFPS(60);
 
     // Wait until the client receives its unique ID from the server
     while (true) {
@@ -154,23 +160,16 @@ int main() {
 
             // Start sending mouse position to the server thread with the client ID
             sendMousePositionRunning = true; // Set the flag to true
-            if (pthread_create(&sendMousePositionThread, NULL, sendMousePositionToServer, game) != 0) {
-                std::cerr << "Failed to create send mouse position thread." << std::endl;
-                return 1;
-            }
+            game->clientID = clientID;
+            pthread_create(&sendMousePositionThread, NULL, sendMousePositionToServer, game);
 
             // Add actors to the vector based on the client ID
             mtxGame.lock();
             game->actorNum = clientID;
-            game->actors[clientID].p = clientID;
             mtxGame.unlock();
             break;
         }
     }
-
-    // Create the window and set target FPS
-    InitWindow(game->screenWidth, game->screenHeight, "TCP Game Client");
-    SetTargetFPS(60);
 
     while (!WindowShouldClose()) {
         // Update mouse position
@@ -240,7 +239,6 @@ int main() {
 
     // Clean up and close the window
     pthread_join(keyboardThread, NULL);
-    sendMousePositionRunning = false;
     pthread_join(sendMousePositionThread, NULL);
     delete game;
     CloseWindow();
