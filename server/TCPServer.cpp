@@ -1,15 +1,21 @@
-// TODO: See which is necessary?
-// Include references (textbook, linuxhowtos)
+// STD and assorted libs
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <unistd.h>
+#include <time.h>
+//
+
+// Network Libs
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <netinet/in.h>
-#include <unistd.h>
-#include <time.h>
-#include "include/raylib.h"
-#include "include/game.h"
+//
+
+// Project Libs
+#include "../include/raylib.h"
+#include "../include/game.h"
+//
 
 #define SERVER_PORT 65501
 #define BUFFER_SIZE 32
