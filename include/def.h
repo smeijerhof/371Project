@@ -3,6 +3,7 @@
 #define SERVER_PORT 65501
 #define IP "localhost"
 #define BUFFER_SIZE 32
+#define QUEUE_SIZE 10
 
 #define FISH_NUM 10
 
