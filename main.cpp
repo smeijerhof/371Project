@@ -21,25 +21,25 @@
 #define TIME_INTERVAL_MS 100
 
 // Function to read keyboard input (non-blocking)
-int nonBlockingRead() {
-    struct termios oldt, newt;
-    int ch;
-    int oldf;
+// int nonBlockingRead() {
+//     struct termios oldt, newt;
+//     int ch;
+//     int oldf;
 
-    tcgetattr(STDIN_FILENO, &oldt);
-    newt = oldt;
-    newt.c_lflag &= ~(ICANON | ECHO);
-    tcsetattr(STDIN_FILENO, TCSANOW, &newt);
-    oldf = fcntl(STDIN_FILENO, F_GETFL, 0);
-    fcntl(STDIN_FILENO, F_SETFL, oldf | O_NONBLOCK);
+//     tcgetattr(STDIN_FILENO, &oldt);
+//     newt = oldt;
+//     newt.c_lflag &= ~(ICANON | ECHO);
+//     tcsetattr(STDIN_FILENO, TCSANOW, &newt);
+//     oldf = fcntl(STDIN_FILENO, F_GETFL, 0);
+//     fcntl(STDIN_FILENO, F_SETFL, oldf | O_NONBLOCK);
 
-    ch = getchar();
+//     ch = getchar();
 
-    tcsetattr(STDIN_FILENO, TCSANOW, &oldt);
-    fcntl(STDIN_FILENO, F_SETFL, oldf);
+//     tcsetattr(STDIN_FILENO, TCSANOW, &oldt);
+//     fcntl(STDIN_FILENO, F_SETFL, oldf);
 
-    return ch;
-}
+//     return ch;
+// }
 
 // Global mutexes to ensure thread-safe access to the game state
 std::mutex mtxMousePos;
@@ -53,19 +53,19 @@ bool leftMouseButtonPressed = false;
 bool zKeyPressed = false;
 bool sendMousePositionRunning = false;
 
-// Function to handle keyboard input in a separate thread
-void* keyboardInputHandler(void* args) {
-    while (true) {
-        int ch = nonBlockingRead();
-        if (ch != EOF) {
-            if (ch == 'z') {
-                mtxZKeyPressed.lock();
-                zKeyPressed = true;
-                mtxZKeyPressed.unlock();
-            }
-        }
-    }
-}
+// // Function to handle keyboard input in a separate thread
+// void* keyboardInputHandler(void* args) {
+//     while (true) {
+//         int ch = nonBlockingRead();
+//         if (ch != EOF) {
+//             if (ch == 'z') {
+//                 mtxZKeyPressed.lock();
+//                 zKeyPressed = true;
+//                 mtxZKeyPressed.unlock();
+//             }
+//         }
+//     }
+// }
 
 // Create a struct to hold both Game and sockfd
 struct SendMousePositionArgs {
@@ -93,7 +93,12 @@ void* sendMousePositionToServer(void* args) {
         buffer[1] = clientID; // Send the client's unique ID to the server
         buffer[2] = (unsigned char)(mp.x);
         buffer[3] = (unsigned char)(mp.y);
-        write(sockfd, buffer, sizeof(buffer));
+        int bytesWritten = write(sockfd, buffer, sizeof(buffer));
+        if (bytesWritten == -1) {
+            std::cerr << "Error occured while sending data to server." << std::endl;
+        } else if ((long unsigned int) bytesWritten < sizeof(buffer)) {
+            std::cerr << "Not all data was sent." << std::endl;
+        }
     }
     return NULL;
 }
@@ -124,9 +129,9 @@ int main() {
     Game* game = new Game();
     game->start();
 
-    // Start keyboard input handler thread
-    pthread_t keyboardThread;
-    pthread_create(&keyboardThread, NULL, keyboardInputHandler, NULL);
+    // // Start keyboard input handler thread
+    // pthread_t keyboardThread;
+    // pthread_create(&keyboardThread, NULL, keyboardInputHandler, NULL);
 
     // Create the struct to hold Game and sockfd
     SendMousePositionArgs* sendArgs = new SendMousePositionArgs();
@@ -198,7 +203,7 @@ int main() {
 
         // Check for 'z' key press and update fish health and game state
         mtxZKeyPressed.lock();
-        if (zKeyPressed) {
+        if (IsKeyPressed(KEY_Z)) {
             mtxZKeyPressed.unlock();
             mtxGame.lock();
             if (game->actors[game->actorNum].catching) {
@@ -238,7 +243,7 @@ int main() {
     }
 
     // Clean up and close the window
-    pthread_join(keyboardThread, NULL);
+    // pthread_join(keyboardThread, NULL);
     pthread_join(sendMousePositionThread, NULL);
     delete game;
     CloseWindow();
