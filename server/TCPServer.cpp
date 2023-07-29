@@ -24,33 +24,32 @@ int main(int argc, char const *argv[]) {
         // read data from connection, convert to appropriate endian
         // TODO: limit loop to only convert ints read
         read(connectionSocket, server.input, 2*BUFFER_SIZE);
-
+		
+		
+		
         for(int i = 0; i < BUFFER_SIZE; i++) {
             server.input[i] = ntohs(server.input[i]);
         }
         uint16_t response[BUFFER_SIZE];
         int responseLength = 0;
 
-
-        switch(input[0]) {
+		//printf("%d\n", server.input[0]);
+        switch(server.input[0]) {
+			
             case 0:
-                printf("Sending Connect Message\n");
+                printf("Handling Connect Message\n");
 
-                if (game.actorNum >= 4) {
+                if (server.actorNum >= 4) {
                     response[responseLength++] = htons(1000);
                 }
                 else {
                     response[responseLength++] = htons(server.actorNum++);
                     for(int i = 0; i < FISH_NUM; i++) {
                         if(server.fishes[i].alive) {
-                            // printf("{%.1f,%.1f}\n", game.fishes[i].position.x, game.fishes[i].position.y);
-                            // printf("host: %f %f\nuint: %d %d\nnetwork: %d %d\n\n",
-                            // game.fishes[i].position.x, game.fishes[i].position.y,
-                            // (uint16_t) game.fishes[i].position.x, (uint16_t) game.fishes[i].position.y,
-                            // htons((uint16_t) game.fishes[i].position.x), htons((uint16_t) game.fishes[i].position.y));
-      
-                            response[responseLength++] = htons((uint16_t) server.fishes[i].position.x);
-                            response[responseLength++] = htons((uint16_t) server.fishes[i].position.y);
+							printf("	Sending Fish Spawn at (%d, %d)\n", (int) server.fishes[i].pos.x, (int) server.fishes[i].pos.y);
+							
+                            response[responseLength++] = htons((uint16_t) server.fishes[i].pos.x);
+							response[responseLength++] = htons((uint16_t) server.fishes[i].pos.y);
                         }
                         else {
                             response[responseLength++] = htons((uint16_t) 1000);
@@ -58,13 +57,15 @@ int main(int argc, char const *argv[]) {
                         }
                     }
                 }
-                // for(int i = 0; i < BUFFER_SIZE; i++) {
-                //     printf("%d, ",response[i]);
-                // }
-                // printf("\n");
                 break;
-            case 1:
-                // printf("mouse message\n");
+				
+			// Token 1 coming in as 768 for some reason
+            case 768:
+				printf("Handling mouse message\n");
+				Vector2 mousePos = { htons(server.input[4]), htons(server.input[5])};
+				
+				printf("	Mouse position = %.2f %.2f\n", mousePos.x, mousePos.y);
+				
                 // printf("server: ");
                 // for(int j = 0; j < 3; j++) {
                 //     response[responseLength++] = buffer[j];
@@ -81,7 +82,5 @@ int main(int argc, char const *argv[]) {
     // close connections
     close(connectionSocket);
     close(server.sock);
-    
-    delete server.positions;
 }
 
