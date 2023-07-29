@@ -1,122 +1,123 @@
-// TODO: See which is necessary?
-// Include references (textbook, linuxhowtos)
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
+#include <iostream>
+#include <vector>
+#include <cstring>
 #include <sys/socket.h>
-#include <sys/types.h>
 #include <netinet/in.h>
 #include <unistd.h>
-#include <time.h>
-#include "include/raylib.h"
+#include <thread>
+#include <mutex>
+
 #include "include/game.h"
 
-#define SERVER_PORT 65500
-#define BUFFER_SIZE 32
-#define QUEUE_SIZE 10
-#define FISH_NUM 10
-#define SCREEN_WIDTH 800
-#define SCREEN_HEIGHT 450
+// Define the port number to listen for connections
+#define PORT 8080
 
-void printError(const char* message) {
-    perror(message);
-    exit(-1);
-}
+// Global mutex to ensure thread-safe access to the game state
+std::mutex mtx;
 
-int main(int argc, char const *argv[]) {
+// Function to handle client connections in separate threads
+void* clientHandler(void* arg) {
+    int clientSocket = *((int*)arg);
+    char buffer[256] = {0};
 
-    // Hold data read from socket
-    // char buffer[BUFFER_SIZE];
-    uint16_t buffer[BUFFER_SIZE];
-
-    // specify socket to read from 
-    struct sockaddr_in channel;
-    memset(&channel, 0, sizeof(channel));
-    channel.sin_family = AF_INET;
-    channel.sin_addr.s_addr = htonl(INADDR_ANY);
-    channel.sin_port = htons(SERVER_PORT);
-
-    // return file descriptor for socket
-    int sock = socket(AF_INET, SOCK_STREAM, 0);
-    if(sock < 0)
-        printError("Failed to create new socket\n");
-
-    // bind socket to supplied address, port
-    int b = bind(sock, (struct sockaddr *) &channel, sizeof(channel));
-    if(b < 0) {
-        printError("Bind failed\n");
-    } else {
-        printf("Listening on port %d...\n", SERVER_PORT);
-    }
-        
-
-    // Once connected to socket, load game
+    // Create the game instance
     Game game;
     game.start();
 
-    // listen to socket for connections
-    int l = listen(sock, QUEUE_SIZE);
-    if(l < 0) 
-        printError("Listen failed");
+    // Send the client's ID to the client
+    unsigned char clientID = game.connectClient();
+    unsigned char idBuffer[2] = { 'I', clientID };
+    write(clientSocket, idBuffer, sizeof(idBuffer));
 
-    // wait until connection established, then read message
-    int connectionSocket = accept(sock, 0, 0);
-    if(connectionSocket < 0)
-        printError("Failed to accept\n");
-
-    while(1) {
-        // read data from connection, convert to appropriate endian
-        read(connectionSocket, buffer, BUFFER_SIZE);
-        for(int i = 0; i < BUFFER_SIZE; i++) {
-            buffer[i] = ntohs(buffer[i]);
+    while (true) {
+        // Receive data from the client (mouse positions in serialized form)
+        int bytesRead = read(clientSocket, buffer, sizeof(buffer));
+        if (bytesRead <= 0) {
+            // Client disconnected or error occurred
+            close(clientSocket);
+            game.disconnectClient(clientID);
+            break;
         }
-        uint16_t response[BUFFER_SIZE];
-        int responseLength = 0;
 
-        switch(buffer[0]) {
-            case 0:
-            // printf("connect message\n");
+        // Extract mouse positions (mouseX = buffer[2], mouseY = buffer[3])
+        int mouseX = buffer[2];
+        int mouseY = buffer[3];
 
-                if (game.actorNum >= 4) {
-                    response[responseLength++] = htons(1000);
-                }
-                else {
-                    response[responseLength++] = htons(game.actorNum++);
-                    for(int i = 0; i < game.fishNum; i++) {
-                        if(game.fishes[i].alive) {
-                            printf("{%.1f,%.1f}\n", game.fishes[i].position.x, game.fishes[i].position.y);
-                            // printf("host: %f %f\nuint: %d %d\nnetwork: %d %d\n\n",
-                            // game.fishes[i].position.x, game.fishes[i].position.y,
-                            // (uint16_t) game.fishes[i].position.x, (uint16_t) game.fishes[i].position.y,
-                            // htons((uint16_t) game.fishes[i].position.x), htons((uint16_t) game.fishes[i].position.y));
-      
-                            response[responseLength++] = htons((uint16_t) game.fishes[i].position.x);
-                            response[responseLength++] = htons((uint16_t) game.fishes[i].position.y);
-                        }
-                        else {
-                            response[responseLength++] = htons((uint16_t) 1000);
-                            response[responseLength++] = htons((uint16_t) 1000);
-                        }
-                    }
-                }
-                break;
-            case 1:
-                // printf("mouse message\n");
-                // printf("server: ");
-                // for(int j = 0; j < 3; j++) {
-                //     response[responseLength++] = buffer[j];
-                //     printf("%d ", ntohs(buffer[j]));
-                // }
-                // printf("\n");
-                break;
+        // Update the game state using the extracted mouse positions
+        mtx.lock();
+        game.updateGameState(clientID, mouseX, mouseY);
+        mtx.unlock();
+
+        // Create the message containing the game fish positions
+        Actor::ActorMessage msg;
+        msg.buffer[0] = 0; // Points
+
+        mtx.lock();
+        for (int i = 0; i < FISH_NUM; i++) {
+            int x = (int)game.positions[i].x;
+            int y = (int)game.positions[i].y;
+
+            msg.buffer[(i * 4) + 1] = (x >> 8) & 0xFF;
+            msg.buffer[(i * 4) + 2] = x & 0xFF;
+            msg.buffer[(i * 4) + 3] = (y >> 8) & 0xFF;
+            msg.buffer[(i * 4) + 4] = y & 0xFF;
         }
-        // printf("writing %d\n-----------------------------------------------------\n", 2*responseLength);
-        write(connectionSocket, response, 2*responseLength);  
-        
+        mtx.unlock();
+
+        // Send the message containing the game fish positions to the client
+        write(clientSocket, msg.buffer, sizeof(msg.buffer));
     }
 
-    // close connections
-    close(connectionSocket);
-    close(sock);
+    return NULL;
 }
 
+int main() {
+    int serverSocket, clientSocket;
+    struct sockaddr_in address;
+    int opt = 1;
+    int addrlen = sizeof(address);
+
+    // Create the server socket
+    serverSocket = socket(AF_INET, SOCK_STREAM, 0);
+    if (serverSocket == 0) {
+        std::cerr << "Socket creation failed." << std::endl;
+        return 1;
+    }
+
+    // Set socket options to allow multiple connections
+    if (setsockopt(serverSocket, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt))) {
+        std::cerr << "setsockopt failed." << std::endl;
+        return 1;
+    }
+
+    address.sin_family = AF_INET;
+    address.sin_addr.s_addr = INADDR_ANY;
+    address.sin_port = htons(PORT);
+
+    // Bind the socket to the specified port
+    if (bind(serverSocket, (struct sockaddr*)&address, sizeof(address)) < 0) {
+        std::cerr << "Bind failed." << std::endl;
+        return 1;
+    }
+
+    // Start listening for incoming connections
+    if (listen(serverSocket, 4) < 0) {
+        std::cerr << "Listen failed." << std::endl;
+        return 1;
+    }
+
+    printf("Server started on port %d\n", PORT);
+
+    std::vector<std::thread> clientThreads;
+
+    // Accept and handle client connections in separate threads
+    while ((clientSocket = accept(serverSocket, (struct sockaddr*)&address, (socklen_t*)&addrlen))) {
+        // Create a new thread to handle the client
+        std::thread clientThread(clientHandler, (void*)&clientSocket);
+
+        // Detach the thread to allow it to run independently
+        clientThread.detach();
+    }
+
+    return 0;
+}
