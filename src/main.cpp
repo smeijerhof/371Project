@@ -16,9 +16,6 @@
 #include <pthread.h>
 #include <math.h>
 
-#define IP "localhost"
-#define BUFFER_SIZE 32
-
 Game* game;
 
 void printError(const char* message) {
