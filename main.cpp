@@ -1,267 +1,252 @@
+#include <iostream>
+#include <pthread.h>
+#include <mutex>
+#include <string.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <unistd.h>
+#include <termios.h>
+#include <fcntl.h>
+#include <arpa/inet.h>
+#include <vector>
+#include <execinfo.h>
+
 #include "include/raylib.h"
 #include "include/game.h"
 
-#include <iostream>
-#include <time.h>
-#include <stdlib.h>
+// Define the server IP address and port number
+#define SERVER_IP "127.0.0.1"
+#define PORT 8080
 
-#include <stdio.h>
-#include <string.h>
-#include <sys/socket.h>
-#include <sys/types.h>
-#include <netinet/in.h>
-#include <netdb.h>
-#include <unistd.h>
-#include <pthread.h>
-#include <math.h>
+// Define the game time interval to send mouse position to the server (in milliseconds)
+#define TIME_INTERVAL_MS 100
 
-#define SERVER_PORT 65500
-#define IP "localhost"
-#define BUFFER_SIZE 32
-#define FISH_NUM 10
+// Function to read keyboard input (non-blocking)
+int nonBlockingRead() {
+    struct termios oldt, newt;
+    int ch;
+    int oldf;
 
-Game* game;
+    tcgetattr(STDIN_FILENO, &oldt);
+    newt = oldt;
+    newt.c_lflag &= ~(ICANON | ECHO);
+    tcsetattr(STDIN_FILENO, TCSANOW, &newt);
+    oldf = fcntl(STDIN_FILENO, F_GETFL, 0);
+    fcntl(STDIN_FILENO, F_SETFL, oldf | O_NONBLOCK);
 
-void printError(const char* message) {
-    perror(message);
-    exit(-1);
+    ch = getchar();
+
+    tcsetattr(STDIN_FILENO, TCSANOW, &oldt);
+    fcntl(STDIN_FILENO, F_SETFL, oldf);
+
+    return ch;
 }
 
-int connectToServer() {
-    struct hostent* serverInfo;
-    serverInfo = gethostbyname(IP);
-    if(!serverInfo)
-        printError("Could not retrieve host information");
+// Global mutexes to ensure thread-safe access to the game state
+std::mutex mtxMousePos;
+std::mutex mtxLeftMouseButton;
+std::mutex mtxZKeyPressed;
+std::mutex mtxGame;
 
-    // Initialize destination socket
-    struct sockaddr_in serverAddress;
-    memset(&serverAddress, 0, sizeof(serverAddress));
-    serverAddress.sin_family = AF_INET;
-    memcpy(&serverAddress.sin_addr.s_addr, serverInfo->h_addr, serverInfo->h_length);
-    serverAddress.sin_port = htons(SERVER_PORT);
+// Global variables to store mouse position and actor state
+Vector2 mousePos = { 0 };
+bool leftMouseButtonPressed = false;
+bool zKeyPressed = false;
+bool sendMousePositionRunning = false;
 
-    // Create new TCP socket, return file descriptor
-    int sock = socket(AF_INET, SOCK_STREAM, 0);
-    if(sock < 0)
-        printError("socket failed");
+// Function to handle keyboard input in a separate thread
+void* keyboardInputHandler(void* arg) {
+    (void)arg; // Unused parameter
 
-    // Try to connect to server
-    int c = connect(sock, (struct sockaddr*) &serverAddress, sizeof(serverAddress));
-    if(c < 0)
-        printError("Could not connect to server");
-
-    return sock;
-
-}
-
-struct crsrMsg {
-    int serverSocket;
-    uint16_t token = 1;
-    uint16_t playerNo;
-    uint16_t mouseX;
-    uint16_t mouseY;
-};
-
-struct connMsg {
-    int serverSocket;
-    uint16_t token = 0;
-};
-
-void* sendConnectMessage(void* msg) {
-    uint16_t buffer[BUFFER_SIZE];
-    uint16_t* ptr = buffer;
-
-    struct connMsg* myMsg = (struct connMsg*) msg;
-    buffer[0] = htons(myMsg->token);
-    ptr = buffer + 1;
-
-    // printf("sending\n");
-    write(myMsg->serverSocket, buffer, 2*(ptr-buffer));
-
-    uint16_t response[BUFFER_SIZE];
-    read(myMsg->serverSocket, response, 2*BUFFER_SIZE);
-    // printf("read complete\n");
-    if(ntohs(response[0]) == 1000) {
-        printf("Could not establish connection; there are already 4 players in the game\n");
-        close(myMsg->serverSocket);
-        CloseWindow();
-        return 0;
-    }
-
-    // TESTING: print vectors of all fish
-    // for(int i = 1; i < (2*FISH_NUM)+1; i+=2) {
-    //         printf("network: %d %d\nhost: %d %d\nfloat: %.1f %.1f\n\n",
-    //                 response[i], response[i+1],
-    //                 ntohs(response[i]),ntohs(response[i+1]),
-    //                 (float) ntohs(response[i]), (float) ntohs(response[i+1]));
-    // }
-    Actor newActor;
-    newActor.p = ntohs(response[0]);
-
-    
-
-    game->actors[game->actorNum++] = newActor;
-
-    game->fishes = new Fish[FISH_NUM];
-    game->positions = new Vector2[FISH_NUM];
-
-    for(int i = 0; i < FISH_NUM; i++) {
-        float fishX = (float) ntohs(response[1+(2*i)]);
-        float fishY = (float) ntohs(response[1+(2*i)+1]);
-        Vector2 fishPos = {fishX, fishY};
-
-        game->fishes[i].spawn(fishPos);
-        game->positions[i] = fishPos;
-        if(fishX == 1000 || fishY == 1000) {
-            game->fishes[i].alive = false;
+    while (true) {
+        int ch = nonBlockingRead();
+        if (ch != EOF) {
+            if (ch == 'z') {
+                mtxZKeyPressed.lock();
+                zKeyPressed = true;
+                mtxZKeyPressed.unlock();
+            }
         }
     }
 
-    for(int i = 0; i < FISH_NUM; i++) {
-        printf("{%.1f, %.1f}\n", game->fishes[i].position.x, game->fishes[i].position.y);
-    }
-
-    return 0;
+    return NULL;
 }
 
-void* sendMouseMessage(void* msg) {
-    // Based on message needing to be sent from server, client sends appropriate token, awaits response on new thread
-    uint16_t buffer[BUFFER_SIZE];
-    uint16_t* ptr = buffer;
+// Function to send mouse position and client ID to the server on a new thread
+void* sendMousePositionToServer(void* arg) {
+    Game* game = static_cast<Game*>(arg);
+    int sockfd = game->sockfd;
+    int clientID = game->clientID;
 
-    struct crsrMsg* myMsg = (struct crsrMsg*) msg;
+    while (sendMousePositionRunning) { // Use the flag to control the loop
+        usleep(TIME_INTERVAL_MS * 1000); // Sleep for the specified time interval
 
-    // printf("%d %d\n", myMsg->mouseX, myMsg->mouseY);
-    // printf("%d %d\n", htons(myMsg->mouseX), htons(myMsg->mouseY));
+        mtxMousePos.lock();
+        Vector2 mp = mousePos;
+        mtxMousePos.unlock();
 
-    buffer[0] = htons(myMsg->token);
-    buffer[1] = htons(myMsg->mouseX);
-    buffer[2] = htons(myMsg->mouseY);
+        // Send mouse position and client ID to the server
+        unsigned char buffer[5] = { 0 };
+        buffer[0] = 'M';
+        buffer[1] = clientID; // Send the client's unique ID to the server
+        buffer[2] = static_cast<unsigned char>(mp.x);
+        buffer[3] = static_cast<unsigned char>(mp.y);
+        write(sockfd, buffer, sizeof(buffer));
+    }
 
-    ptr = buffer + 6;
-
-    // free(msg);
-    // printf("client: ");
-    // for(int i = 0; i < 3; i++) {
-    //     printf("%d ", ntohs(buffer[i]));
-    // }
-    // printf("\n");
-
-    // printf("%ld\n",ptr - buffer);
-
-    write(myMsg->serverSocket, buffer, ptr - buffer);
-
-    uint16_t response[BUFFER_SIZE];
-    read(myMsg->serverSocket, response, BUFFER_SIZE);
-    // printf("response: ");
-    // for(int i = 0; i < 3; i++)
-    //     printf("%d ", ntohs(buffer[i]));
-    // printf("\n");
-
-    // switch((char*) msg) {
-    //     case "mouse":
-    //         break;
-    //     case "catch":
-    //         break;
-    //     case "catchComplete":
-    //         break;
-    // }
-
-    return 0;
+    return NULL;
 }
 
 int main() {
-    pthread_t tcpThread;
+    // Connect to the server
+    int sockfd = socket(AF_INET, SOCK_STREAM, 0);
+    if (sockfd == -1) {
+        std::cerr << "Socket creation failed." << std::endl;
+        return 1;
+    }
 
-    game = (Game*) malloc(sizeof(Game));
+    struct sockaddr_in serv_addr;
+    serv_addr.sin_family = AF_INET;
+    serv_addr.sin_port = htons(PORT);
 
-    game->screenWidth = 800;
-    game->screenHeight = 450;
+    if (inet_pton(AF_INET, SERVER_IP, &serv_addr.sin_addr) <= 0) {
+        std::cerr << "Invalid server address." << std::endl;
+        return 1;
+    }
 
+    if (connect(sockfd, (struct sockaddr*)&serv_addr, sizeof(serv_addr)) < 0) {
+        std::cerr << "Connection failed." << std::endl;
+        return 1;
+    }
 
-    int myServerSocket = connectToServer();
-    // printf("serverSocket: %d\n", myServerSocket);
+    // Create the game instance
+    Game* game = new Game();
+    game->start();
+    game->sockfd = sockfd;
+    game->clientID = -1;
 
+    // Create thread objects
+    pthread_t keyboardThread;
+    pthread_t sendMousePositionThread;
 
-    // Upon connection establishment, instantiate local game with provided fish locations
-    struct connMsg* myConnMsg = new struct connMsg;
-    myConnMsg->serverSocket = myServerSocket;
-    pthread_t connThread;
+    // Start keyboard input handler thread
+    if (pthread_create(&keyboardThread, NULL, keyboardInputHandler, NULL) != 0) {
+        std::cerr << "Failed to create keyboard input handler thread." << std::endl;
+        return 1;
+    }
 
-    pthread_create(&connThread, NULL, sendConnectMessage, (void*) myConnMsg);
-    pthread_join(connThread, NULL);
+    // Wait until the client receives its unique ID from the server
+    while (true) {
+        unsigned char buffer[2] = { 0 };
+        int bytesRead = read(sockfd, buffer, sizeof(buffer));
+        if (bytesRead <= 0) {
+            // Server disconnected or error occurred
+            close(sockfd);
+            return 1;
+        }
 
-    // printf("game starting!\n");
-    // for(int i = 0; i < FISH_NUM; i++) {
-    //     printf("{%.1f,%.1f} %d\n", game->fishes[i].position.x, game->fishes[i].position.y,game->fishes[i].alive);
-    // }
+        // Check the message type
+        char messageType = buffer[0];
 
-    InitWindow(game->screenWidth, game->screenHeight, "Window Name");
+        if (messageType == 'I') {
+            // Server sent the client ID, extract and store it
+            int clientID = buffer[1];
 
-    SetTargetFPS(30); 
+            // Start sending mouse position to the server thread with the client ID
+            sendMousePositionRunning = true; // Set the flag to true
+            if (pthread_create(&sendMousePositionThread, NULL, sendMousePositionToServer, game) != 0) {
+                std::cerr << "Failed to create send mouse position thread." << std::endl;
+                return 1;
+            }
 
-    Actor self;
+            // Add actors to the vector based on the client ID
+            mtxGame.lock();
+            game->actorNum = clientID;
+            game->actors[clientID].p = clientID;
+            mtxGame.unlock();
+            break;
+        }
+    }
+
+    // Create the window and set target FPS
+    InitWindow(game->screenWidth, game->screenHeight, "TCP Game Client");
+    SetTargetFPS(60);
 
     while (!WindowShouldClose()) {
-        
-        game->elapsed += GetFrameTime();
+        // Update mouse position
+        mtxMousePos.lock();
+        mousePos = GetMousePosition();
+        leftMouseButtonPressed = IsMouseButtonPressed(MOUSE_LEFT_BUTTON);
+        mtxMousePos.unlock();
 
-        if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
-            Vector2 mp = GetMousePosition();
-            for (int i = 0; i < game->fishNum; i++) {
-                if (mp.x > game->fishes[i].position.x && mp.x < game->fishes[i].position.x + Fish::size.x && mp.y > game->fishes[i].position.y && mp.y < game->fishes[i].position.y + Fish::size.y && game->fishes[i].alive) {
-                    // REQUEST TO CATCH
-                    if (self.catching) break;
-                    self.catching = true;
-                    self.target = i;
+        // Check for fish catching condition and update game state
+        if (leftMouseButtonPressed) {
+            mtxMousePos.lock();
+            mtxGame.lock();
+            for (int i = 0; i < FISH_NUM; i++) {
+                if (mousePos.x > game->fishes[i].position.x && mousePos.x < game->fishes[i].position.x + Fish::size.x &&
+                    mousePos.y > game->fishes[i].position.y && mousePos.y < game->fishes[i].position.y + Fish::size.y &&
+                    game->fishes[i].alive) {
+                    // Fish caught, update actor state and fish color
+                    game->actors[game->actorNum].catching = true;
+                    game->actors[game->actorNum].target = i;
                     game->fishes[i].color = GREEN;
-                    game->fishes[i].caught = true;
                 }
             }
+            mtxGame.unlock();
+            mtxMousePos.unlock();
         }
 
-        if (IsKeyPressed(KEY_Z) && self.catching) {
-            game->fishes[self.target].health--;
-        } 
-
-        if (game->fishes[self.target].health <= 0 && self.catching & game->fishes[self.target].alive) {
-            game->fishes[self.target].alive = false;
-            self.catching = false;
-            self.points++;
-        }
-
-        // Multi-threaded client Testing
-        // printf("%d\n",(int) (fmod(game.elapsed,0.1f) * 100));
-        if (int(fmod(game->elapsed, 0.1f) * 100) == 0) {
-            struct crsrMsg myMsg;
-            myMsg.serverSocket = myServerSocket;
-            myMsg.token = (uint16_t) 1;
-            myMsg.mouseX = (uint16_t) GetMousePosition().x;
-            myMsg.mouseY = (uint16_t) GetMousePosition().y;
-
-            pthread_create(&tcpThread, NULL, sendMouseMessage, (void*) &myMsg);
-        }
-
-        BeginDrawing();
-
-            ClearBackground(DARKBLUE);
-
-            DrawFPS(20, 20);
-            DrawText(TextFormat("Points = %d", self.points), 20, 40, 20, WHITE);
-            DrawText(TextFormat("Time = %.1f", game->elapsed), 20, 60, 20, WHITE);
-
-            if (self.catching) {
-                DrawText("Fish Hooked!", (game->screenWidth - MeasureText("Fish Hooked!", 50)) / 2.f, 20, 50, WHITE);
-                DrawText("Press Z!", (game->screenWidth - MeasureText("Press Z!", 35)) / 2.f, 70, 35, WHITE);
+        // Check for 'z' key press and update fish health and game state
+        mtxZKeyPressed.lock();
+        if (zKeyPressed) {
+            mtxZKeyPressed.unlock();
+            mtxGame.lock();
+            if (game->actors[game->actorNum].catching) {
+                int targetFish = game->actors[game->actorNum].target;
+                if (game->fishes[targetFish].health > 0 && game->fishes[targetFish].alive) {
+                    game->fishes[targetFish].health--;
+                }
+                if (game->fishes[targetFish].health <= 0 && game->fishes[targetFish].alive) {
+                    // Fish caught successfully, update fish and actor state
+                    game->fishes[targetFish].alive = false;
+                    game->actors[game->actorNum].catching = false;
+                    game->actors[game->actorNum].points++;
+                    game->numFishAlive--;
+                }
             }
+            mtxGame.unlock();
+        } else {
+            mtxZKeyPressed.unlock();
+        }
 
-            game->draw();
+        // Clear the screen and draw the game elements
+        BeginDrawing();
+        ClearBackground(RAYWHITE);
+        DrawFPS(20, 20);
+        DrawText(TextFormat("Points = %d", game->actors[game->actorNum].points), 20, 40, 20, WHITE);
+        DrawText(TextFormat("Time = %.1f", game->elapsed), 20, 60, 20, WHITE);
+
+        mtxGame.lock();
+        game->draw();
+        if (game->actors[game->actorNum].catching) {
+            DrawText("Fish Hooked!", (game->screenWidth - MeasureText("Fish Hooked!", 50)) / 2.f, 20, 50, WHITE);
+            DrawText("Press Z!", (game->screenWidth - MeasureText("Press Z!", 35)) / 2.f, 70, 35, WHITE);
+        }
+        mtxGame.unlock();
 
         EndDrawing();
     }
 
-    free(game);
-    close(myServerSocket);
+    // Clean up and close the window
+    pthread_join(keyboardThread, NULL);
+    sendMousePositionRunning = false;
+    pthread_join(sendMousePositionThread, NULL);
+    delete game;
     CloseWindow();
+
+    // Close the socket
+    close(sockfd);
+
     return 0;
 }
