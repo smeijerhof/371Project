@@ -1,5 +1,6 @@
 #include "../include/raylib.h"
 #include "../include/game.h"
+#include "../include/def.h"
 
 #include <iostream>
 #include <time.h>
@@ -15,10 +16,8 @@
 #include <pthread.h>
 #include <math.h>
 
-#define SERVER_PORT 65501
 #define IP "localhost"
 #define BUFFER_SIZE 32
-#define FISH_NUM 10
 
 Game* game;
 
