@@ -2,7 +2,6 @@
 #include <iostream>
 #include <time.h>
 #include <stdlib.h>
-
 #include <stdio.h>
 #include <string.h>
 #include <sys/socket.h>
@@ -44,7 +43,7 @@ struct Fish {
             drawPos.x += (rand() % 10) - 5;
             drawPos.y += (rand() % 10) - 5;
         }
-        
+
         DrawRectangleV(drawPos, size, color);
 
         Rectangle rec = { drawPos.x, drawPos.y, size.x, size.y };
@@ -68,9 +67,9 @@ struct Actor {
         ActorMessage msg;
         msg.buffer[0] = points;
 
-        unsigned int x = (unsigned int) position.x;
-        unsigned int y = (unsigned int) position.y;
-        
+        unsigned int x = (unsigned int)position.x;
+        unsigned int y = (unsigned int)position.y;
+
         msg.buffer[1] = (x >> 24) & 0xFF;
         msg.buffer[2] = (x >> 16) & 0xFF;
         msg.buffer[3] = (x >> 8) & 0xFF;
@@ -86,25 +85,72 @@ struct Actor {
 };
 
 struct Game {
+    std::mutex mtx;
+
     time_t seed { 0 };
     float elapsed = 0.f;
 
-    int screenWidth = 0;
-    int screenHeight = 0;
+    int screenWidth = 800;
+    int screenHeight = 450;
 
     int fishNum = 10;
+    int numFishAlive = fishNum;
     Fish* fishes;
     Vector2* positions;
 
     int actorNum = 0;
     Actor actors[4] {};
+    int totalActors = 0;
+
+    // New method to update game state based on client's mouse positions
+    void updateGameState(int clientID, int mouseX, int mouseY) {
+        if (clientID < 0 || clientID >= 4)
+            return;
+
+        if (clientID == actorNum) {
+            // Update mouse position for the player associated with this clientID
+            mtx.lock();
+            actors[clientID].p = clientID;
+            actors[clientID].catching = false;
+
+            // Check for fish catching condition and update actor state
+            for (int i = 0; i < FISH_NUM; i++) {
+                if (mouseX > fishes[i].position.x && mouseX < fishes[i].position.x + Fish::size.x &&
+                    mouseY > fishes[i].position.y && mouseY < fishes[i].position.y + Fish::size.y &&
+                    fishes[i].alive) {
+                    // Fish caught, update actor state and fish color
+                    actors[clientID].catching = true;
+                    actors[clientID].target = i;
+                    fishes[i].color = GREEN;
+                }
+            }
+            mtx.unlock();
+        }
+    }
+
+    unsigned char connectClient() {
+        mtx.lock();
+        unsigned char clientID = totalActors;
+        totalActors++;
+        mtx.unlock();
+        return clientID;
+    }
+
+    // New method to disconnect a client and update game state
+    void disconnectClient(int clientID) {
+        if (clientID < 0 || clientID >= 4)
+            return;
+
+        mtx.lock();
+        actors[clientID].p = -1;
+        actors[clientID].catching = false;
+        mtx.unlock();
+    }
 
     void start() {
         seed = time(NULL);
         srand(seed);
 
-        // TODO: get fish locations from server, in order to synchronize locations across clients
-        // Upon establishment connection, server sends back locations of all the fish in the game world
         fishes = new Fish[fishNum];
         positions = new Vector2[fishNum];
         for (int i = 0; i < fishNum; i++) {
@@ -114,7 +160,7 @@ struct Game {
 
             // Stop fishes from spawning on each other
             for (int j = 0; j < i; j++) {
-                Vector2 oldPosition = fishes[j].position;
+                Vector2 oldPosition = fishes[j].position; 
                 Vector2 newPosition = fishes[i].position;
 
                 float xDist = abs(oldPosition.x - newPosition.x);
