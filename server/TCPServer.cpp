@@ -59,10 +59,9 @@ int main(int argc, char const *argv[]) {
                 }
                 break;
 				
-			// Token 1 coming in as 768 for some reason
-            case 768:
+            case 1:
 				printf("Handling mouse message\n");
-				Vector2 mousePos = { htons(server.input[4]), htons(server.input[5])};
+				Vector2 mousePos = { (float) server.input[1], (float) server.input[2]};
 				
 				printf("	Mouse position = %.2f %.2f\n", mousePos.x, mousePos.y);
 				

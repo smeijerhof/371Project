@@ -100,7 +100,7 @@ void* sendMouseMessage(void* msg) {
     outMsg[msgSize++] = htons(myMsg->mouseX);
     outMsg[msgSize++] = htons(myMsg->mouseY);
 	
-    write(myMsg->serverSocket, msg, 2*BUFFER_SIZE);//2*msgSize);
+    write(myMsg->serverSocket, outMsg, 2*BUFFER_SIZE);//2*msgSize);
 
     uint16_t response[BUFFER_SIZE];
     read(myMsg->serverSocket, response, 2*BUFFER_SIZE);
