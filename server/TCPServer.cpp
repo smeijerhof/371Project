@@ -19,20 +19,29 @@ int main(int argc, char const *argv[]) {
     int connectionSocket = accept(server.sock, 0, 0);
     if(connectionSocket < 0)
         printError("Failed to accept\n");
+	
+    while (1) {
+	// Read data from the client
+	bytesRead = read(clientSocket, clientInput, 2 * BUFFER_SIZE);
+	
+	// Check if there was an error or if the client disconnected
+	if (bytesRead <= 0) {
+	    // Handle disconnection
+	    printf("Client disconnected or an error occurred.\n");
+	    break; // Exit the while loop to close the connection and clean up resources.
+	}
+	
+	// Calculate the number of uint16_t integers read from the client
+	int numIntegersRead = bytesRead / 2; // Each uint16_t occupies 2 bytes
+	
+	for (int i = 0; i < numIntegersRead; i++) {
+	    clientInput[i] = ntohs(clientInput[i]);
+	}
+	
+	uint16_t response[BUFFER_SIZE];
+	int responseLength = 0;
 
-    while(1) {
-        // read data from connection, convert to appropriate endian
-        // TODO: limit loop to only convert ints read
-        read(connectionSocket, server.input, 2*BUFFER_SIZE);
-		
-		
-		
-        for(int i = 0; i < BUFFER_SIZE; i++) {
-            server.input[i] = ntohs(server.input[i]);
-        }
-        uint16_t response[BUFFER_SIZE];
-        int responseLength = 0;
-
+	
 		//printf("%d\n", server.input[0]);
         switch(server.input[0]) {
 			
