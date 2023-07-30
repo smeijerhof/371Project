@@ -74,7 +74,9 @@ int main(int argc, char const *argv[]) {
                 break;
         }
         // printf("writing %d\n-----------------------------------------------------\n", 2*responseLength);
-        write(connectionSocket, response, 2*BUFFER_SIZE);//2*responseLength);  
+        if(write(connectionSocket, response,2*responseLength) != responseLength) {
+            printf("Message not sent in its entirety.\n");
+        }  
         
     }
 

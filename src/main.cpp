@@ -54,7 +54,9 @@ void* sendConnectMessage(void* msg) {
     struct connMsg* myMsg = (struct connMsg*) msg;
     outMsg[msgSize++] = htons(myMsg->token);
 
-    write(myMsg->serverSocket, outMsg, 2*msgSize);
+    if(write(myMsg->serverSocket, outMsg, 2*msgSize) != 2*msgSize) {
+        printf("Message not sent in its entirety.\n");
+    }
 
     uint16_t response[BUFFER_SIZE];
     read(myMsg->serverSocket, response, 2*BUFFER_SIZE);
