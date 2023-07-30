@@ -31,6 +31,8 @@ struct ServerState {
     uint16_t input[BUFFER_SIZE];
     int sock;
 
+    Vector2 playerCursors[4] = {};
+
     int actorNum;
 
     Fish fishes[FISH_NUM];

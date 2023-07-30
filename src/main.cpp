@@ -1,6 +1,7 @@
 #include "../include/game.h"
 
 Game game;
+int* playerNo;
 
 void printError(const char* message) {
     perror(message);
@@ -71,6 +72,7 @@ void* sendConnectMessage(void* msg) {
 
     Actor newActor;
     newActor.p = ntohs(response[0]);
+    *playerNo = (int) ntohs(response[0]);
 
     game.actors[game.actorNum++] = newActor;
 
@@ -99,6 +101,7 @@ void* sendMouseMessage(void* msg) {
 	printf("positions: %d %d %d\n", myMsg->mouseX, htons(myMsg->mouseX), ntohs(htons(myMsg->mouseX)));
 	
     outMsg[msgSize++] = htons(myMsg->token);
+    outMsg[msgSize++] = htons((uint16_t) *playerNo);
     outMsg[msgSize++] = htons(myMsg->mouseX);
     outMsg[msgSize++] = htons(myMsg->mouseY);
 	
@@ -111,6 +114,8 @@ void* sendMouseMessage(void* msg) {
 }
 
 int main() {
+    playerNo = (int*) malloc(sizeof(int));
+
     pthread_t tcpThread;
 
     int myServerSocket = connectToServer();
