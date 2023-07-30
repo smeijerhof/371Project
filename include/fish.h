@@ -14,7 +14,7 @@ struct Fish {
     bool alive = false;
     bool taken = false;
 
-    void spawn(int x, int y) {
+    void spawn(float x, float y) {
         alive = true;
         taken = false;
         pos = {x, y};
