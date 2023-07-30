@@ -1,4 +1,5 @@
 #include "../include/game.h"
+#include <unistd.h> // Include the unistd.h library for the sleep function
 
 Game game;
 
@@ -129,9 +130,24 @@ int main() {
 
     Actor self;
 
+    // Add a flag to track if the game is ready to start
+    bool isGameReady = false;
+
     while (!WindowShouldClose()) {
-        
         game.elapsed += GetFrameTime();
+
+        if (!isGameReady) {
+            // waiting period in the lobby for 30 seconds
+            if (game.elapsed >= 30.0f) {
+                isGameReady = true;
+            } else {
+                // Print a message 
+                DrawText("Waiting in Lobby...", 20, 100, 30, WHITE);
+		// display a countdown for players during the waiting period ????
+                // DrawText(TextFormat("Time left: %.1f seconds", 30.0f - game.elapsed), 20, 140, 30, WHITE);
+            }
+        } 
+	else {
 
         if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
             Vector2 mp = GetMousePosition();
@@ -168,7 +184,8 @@ int main() {
 			
             pthread_create(&tcpThread, NULL, sendMouseMessage, (void*) &myMsg);
         }
-
+	}
+	    
         BeginDrawing();
 
             ClearBackground(DARKBLUE);
