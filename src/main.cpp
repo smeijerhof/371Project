@@ -130,7 +130,7 @@ int main() {
     pthread_join(connThread, NULL);
 
 
-    InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "Window Name");
+    InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "Fishing Frenzy");
 
     SetTargetFPS(30); 
 
