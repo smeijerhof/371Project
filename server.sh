@@ -1,4 +1,4 @@
-make server
+make host
 cd bin
 ./server
-cd ../ 
+cd ../
