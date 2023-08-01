@@ -43,10 +43,36 @@ struct crsrMsg {
     uint16_t mouseY;
 };
 
+struct catchMsg {
+    int serverSocket;
+    uint16_t token = 2;
+    uint16_t playerNo;
+    uint16_t fishIndex;
+}
+
 struct connMsg {
     int serverSocket;
     uint16_t token = 0;
 };
+
+void* sendCatchMessage(void* msg) {
+    // Based on message needing to be sent from server, client sends appropriate token, awaits response on new thread
+    uint16_t outMsg[BUFFER_SIZE];
+    int msgSize = 0;
+
+    struct catchMsg* myMsg = (struct catchMsg*) msg;
+		
+    outMsg[msgSize++] = htons(myMsg->token);
+    outMsg[msgSize++] = htons((uint16_t) *playerNo);
+    outMsg[msgSize++] = htons(myMsg->fishIndex);
+	
+    write(myMsg->serverSocket, outMsg, 2*BUFFER_SIZE);//2*msgSize);
+
+    uint16_t response[BUFFER_SIZE];
+    read(myMsg->serverSocket, response, 2*BUFFER_SIZE);
+
+    return 0;
+}
 
 void* sendConnectMessage(void* msg) {
     uint16_t outMsg[BUFFER_SIZE];
@@ -97,9 +123,7 @@ void* sendMouseMessage(void* msg) {
     int msgSize = 0;
 
     struct crsrMsg* myMsg = (struct crsrMsg*) msg;
-	
-	printf("positions: %d %d %d\n", myMsg->mouseX, htons(myMsg->mouseX), ntohs(htons(myMsg->mouseX)));
-	
+		
     outMsg[msgSize++] = htons(myMsg->token);
     outMsg[msgSize++] = htons((uint16_t) *playerNo);
     outMsg[msgSize++] = htons(myMsg->mouseX);
@@ -145,10 +169,20 @@ int main() {
             for (int i = 0; i < FISH_NUM; i++) {
                 if (mp.x > game.fishes[i].pos.x && mp.x < game.fishes[i].pos.x + FISH_WIDTH && mp.y > game.fishes[i].pos.y && mp.y < game.fishes[i].pos.y + FISH_HEIGHT && game.fishes[i].alive) {
                     // REQUEST TO CATCH
-                    if (self.catching) break;
-                    self.catching = true;
-                    self.target = i;
-                    game.fishes[i].taken = true;
+		    printf("Requesting to catch fish %dn", i);
+			
+		    struct catchMsg myMsg;
+                    myMsg.serverSocket = myServerSocket;
+           	    myMsg.token = (uint16_t) 2;
+			
+            	    myMsg.fishIndex = (uint16_t) i;
+			
+		    pthread_create(&tcpThread, NULL, sendCatchMessage, (void*) &myMsg);
+			
+                    //if (self.catching) break;
+                    //self.catching = true;
+                    //self.target = i;
+                    //game.fishes[i].taken = true;
                 }
             }
         }
