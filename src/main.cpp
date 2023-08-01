@@ -1,6 +1,7 @@
 #include "../include/game.h"
 
 Game game;
+Actor self;
 int* playerNo;
 
 void printError(const char* message) {
@@ -71,6 +72,11 @@ void* sendCatchMessage(void* msg) {
     uint16_t response[BUFFER_SIZE];
     read(myMsg->serverSocket, response, 2*BUFFER_SIZE);
 
+    printf("Success in catching fish!\n");
+    self.catching = true;
+    self.target = myMsg->fishIndex;
+    game.fishes[myMsg->fishIndex].taken = true;
+	
     return 0;
 }
 
@@ -158,7 +164,7 @@ int main() {
 
     SetTargetFPS(30); 
 
-    Actor self;
+    
 
     while (!WindowShouldClose()) {
         
@@ -169,6 +175,7 @@ int main() {
             for (int i = 0; i < FISH_NUM; i++) {
                 if (mp.x > game.fishes[i].pos.x && mp.x < game.fishes[i].pos.x + FISH_WIDTH && mp.y > game.fishes[i].pos.y && mp.y < game.fishes[i].pos.y + FISH_HEIGHT && game.fishes[i].alive) {
                     // REQUEST TO CATCH
+		    if (self.catching) break;
 		    printf("Requesting to catch fish %dn", i);
 			
 		    struct catchMsg myMsg;
@@ -178,11 +185,6 @@ int main() {
             	    myMsg.fishIndex = (uint16_t) i;
 			
 		    pthread_create(&tcpThread, NULL, sendCatchMessage, (void*) &myMsg);
-			
-                    //if (self.catching) break;
-                    //self.catching = true;
-                    //self.target = i;
-                    //game.fishes[i].taken = true;
                 }
             }
         }
