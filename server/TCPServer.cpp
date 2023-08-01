@@ -84,6 +84,30 @@ int main(int argc, char const *argv[]) {
                 // }
                 // printf("\n");
                 break;
+	    case 2:
+		uint16_t response[BUFFER_SIZE];
+                int responseLength = 0;
+		    
+		int playerNo = (int) server.input[1];
+		int fishToCatch = (int) server.input[2];
+
+		printf("Player %d attemping to catch fish %d.\n", playerNo, fishToCatch);
+		if (!server.fishes[i].alive) {
+			printf("	Fish is dead.\n");
+			response[responseLength++] = htons((uint16_t) 0);
+			break;
+		}
+		if (server.fishes[i].taken) {
+			printf("	Fish is already being caught.\n");
+			response[responseLength++] = htons((uint16_t) 0);
+			break;
+		}
+		printf("	Succesful.\n");
+
+		server.fishes[i].taken = true;
+		response[responseLength++] = htons((uint16_t) 1);
+
+		break;
         }
         // printf("writing %d\n-----------------------------------------------------\n", 2*responseLength);
         if(write(connectionSocket, response,2*responseLength) != responseLength) {
