@@ -31,6 +31,8 @@ struct ServerState {
     uint16_t input[BUFFER_SIZE];
     int sock;
 
+    Vector2 playerCursors[4] = {};
+
     int actorNum;
 
     Fish fishes[FISH_NUM];
@@ -58,8 +60,8 @@ struct ServerState {
       for (int i = 0; i < FISH_NUM; i++) {
           Fish f;
           f.spawn(
-             100 + rand() % (SCREEN_WIDTH - 200),
-              100 + rand() % (SCREEN_HEIGHT - 200) 
+            (float) 100 + rand() % (SCREEN_WIDTH - 200),
+            (float) 100 + rand() % (SCREEN_HEIGHT - 200) 
           );
           fishes[i] = f;
       }

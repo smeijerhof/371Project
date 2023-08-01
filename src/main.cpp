@@ -1,6 +1,7 @@
 #include "../include/game.h"
 
 Game game;
+int* playerNo;
 
 void printError(const char* message) {
     perror(message);
@@ -54,7 +55,9 @@ void* sendConnectMessage(void* msg) {
     struct connMsg* myMsg = (struct connMsg*) msg;
     outMsg[msgSize++] = htons(myMsg->token);
 
-    write(myMsg->serverSocket, outMsg, 2*msgSize);
+    if(write(myMsg->serverSocket, outMsg, 2*msgSize) != 2*msgSize) {
+        printf("Message not sent in its entirety.\n");
+    }
 
     uint16_t response[BUFFER_SIZE];
     read(myMsg->serverSocket, response, 2*BUFFER_SIZE);
@@ -69,6 +72,7 @@ void* sendConnectMessage(void* msg) {
 
     Actor newActor;
     newActor.p = ntohs(response[0]);
+    *playerNo = (int) ntohs(response[0]);
 
     game.actors[game.actorNum++] = newActor;
 
@@ -97,6 +101,7 @@ void* sendMouseMessage(void* msg) {
 	printf("positions: %d %d %d\n", myMsg->mouseX, htons(myMsg->mouseX), ntohs(htons(myMsg->mouseX)));
 	
     outMsg[msgSize++] = htons(myMsg->token);
+    outMsg[msgSize++] = htons((uint16_t) *playerNo);
     outMsg[msgSize++] = htons(myMsg->mouseX);
     outMsg[msgSize++] = htons(myMsg->mouseY);
 	
@@ -109,6 +114,8 @@ void* sendMouseMessage(void* msg) {
 }
 
 int main() {
+    playerNo = (int*) malloc(sizeof(int));
+
     pthread_t tcpThread;
 
     int myServerSocket = connectToServer();
@@ -123,7 +130,7 @@ int main() {
     pthread_join(connThread, NULL);
 
 
-    InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "Window Name");
+    InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "Fishing Frenzy");
 
     SetTargetFPS(30); 
 
