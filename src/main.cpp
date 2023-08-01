@@ -125,7 +125,7 @@ void* sendMouseMessage(void* msg) {
 
     struct crsrMsg* myMsg = (struct crsrMsg*) msg;
 	
-	printf("positions: %d %d %d\n", myMsg->mouseX, htons(myMsg->mouseX), ntohs(htons(myMsg->mouseX)));
+	// printf("positions: %d %d %d\n", myMsg->mouseX, htons(myMsg->mouseX), ntohs(htons(myMsg->mouseX)));
 	
     outMsg[msgSize++] = htons(myMsg->token);
     outMsg[msgSize++] = htons((uint16_t) *playerNo);
@@ -223,7 +223,8 @@ int main() {
         EndDrawing();
     }
 
-    pthread_join(tcpThread, NULL);
+    // Program gets blocked when below function is run
+    // pthread_join(tcpThread, NULL);
     delete game;
     close(myServerSocket);
     CloseWindow();
