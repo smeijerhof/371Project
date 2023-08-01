@@ -38,7 +38,7 @@ void printError(const char* message) {
 int connectToServer() {
     struct hostent* serverInfo;
     serverInfo = gethostbyname(IP);
-    if(!serverInfo)
+    if(serverInfo == NULL)
         printError("Could not retrieve host information");
 
     // Initialize destination socket
