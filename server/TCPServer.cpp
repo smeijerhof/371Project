@@ -110,9 +110,9 @@ int main(int argc, char const *argv[]) {
         printError("Listen failed");
 
     // wait until connection established, then read message
-    int connectionSocket = accept(server->sock, 0, 0);
-    if(connectionSocket < 0)
-        printError("Failed to accept\n");
+    // int connectionSocket = accept(server->sock, 0, 0);
+    // if(connectionSocket < 0)
+    //     printError("Failed to accept\n");
 
 
 
@@ -120,6 +120,8 @@ int main(int argc, char const *argv[]) {
 
     // Accept and handle client connections in separate threads
     while (int clientSocket = accept(server->sock, 0, 0)) {
+        if(clientSocket < 0)
+            printError("Failed to accept");
         // Create a new thread to handle the client
         std::thread clientThread(clientHandler, (void*)&clientSocket);
 
