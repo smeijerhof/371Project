@@ -60,58 +60,76 @@ int main(int argc, char const *argv[]) {
                 break;
 				
             case 1:
-                // Read message, update server values
-				// printf("Handling mouse message\n");
-                int playerNo = (int) server.input[1];
-                Vector2 mousePos = { (float) server.input[2], (float) server.input[3]};
-                server.playerCursors[playerNo] = mousePos;
-
-
-                uint16_t response[BUFFER_SIZE];
-                int responseLength = 0;
-                for(int i = 0; i < server.actorNum; i++) {
-                    response[responseLength++] = htons((uint16_t) server.playerCursors[i].x);
-                    response[responseLength++] = htons((uint16_t) server.playerCursors[i].y);
-                }
-
+				{
+					// Read message, update server values
+					// printf("Handling mouse message\n");
+					int playerNo = (int) server.input[1];
+					Vector2 mousePos = { (float) server.input[2], (float) server.input[3]};
+					server.playerCursors[playerNo] = mousePos;
+					int score = (int) server.input[4];
+					server.playerScores[playerNo] = score;
+					
+					for(int i = 0; i < server.actorNum; i++) {
+						response[responseLength++] = htons((uint16_t) server.playerCursors[i].x);
+						response[responseLength++] = htons((uint16_t) server.playerCursors[i].y);
+						response[responseLength++] = htons((uint16_t) server.playerScores[i]);
+					}
+					break;
+				}
 				
-				// printf("	Mouse position = %.2f %.2f\n", mousePos.x, mousePos.y);
 				
-                // printf("server: ");
-                // for(int j = 0; j < 3; j++) {
-                //     response[responseLength++] = buffer[j];
-                //     printf("%d ", ntohs(buffer[j]));
-                // }
-                // printf("\n");
-                break;
-	    case 2:
-		uint16_t response[BUFFER_SIZE];
-                int responseLength = 0;
-		    
-		int playerNo = (int) server.input[1];
-		int fishToCatch = (int) server.input[2];
+			case 2:
 
-		printf("Player %d attemping to catch fish %d.\n", playerNo, fishToCatch);
-		if (!server.fishes[i].alive) {
-			printf("	Fish is dead.\n");
-			response[responseLength++] = htons((uint16_t) 0);
-			break;
-		}
-		if (server.fishes[i].taken) {
-			printf("	Fish is already being caught.\n");
-			response[responseLength++] = htons((uint16_t) 0);
-			break;
-		}
-		printf("	Succesful.\n");
-
-		server.fishes[i].taken = true;
-		response[responseLength++] = htons((uint16_t) 1);
-
-		break;
+				{
+					int cPlayerNo = (int) server.input[1];
+					int fishToCatch = (int) server.input[2];
+					
+					if (fishToCatch < 0 || fishToCatch >= FISH_NUM) {
+						printf("Error in player %d catching fish %d: corrupted index\n", cPlayerNo, fishToCatch);
+						response[responseLength++] = htons((uint16_t) 0);
+						break;
+					}
+					
+					printf("Player %d attemping to catch fish %d.\n", cPlayerNo, fishToCatch);
+					if (!server.fishes[fishToCatch].alive) {
+						printf("	Fish is dead.\n");
+						response[responseLength++] = htons((uint16_t) 0);
+						break;
+					}
+					if (server.fishes[fishToCatch].taken) {
+						printf("	Fish is already being caught.\n");
+						response[responseLength++] = htons((uint16_t) 0);
+						break;
+					}
+					printf("	Succesful.\n");
+					
+					server.fishes[fishToCatch].taken = true;
+					response[responseLength++] = htons((uint16_t) 1);
+					
+					break;
+				}
+				
+			case 3:
+				{
+					int cPlayerNo = (int) server.input[1];
+					int fishToCatch = (int) server.input[2];
+					
+					if (fishToCatch < 0 || fishToCatch >= FISH_NUM) {
+						printf("Error in player %d killing fish %d: corrupted index\n", cPlayerNo, fishToCatch);
+						break;
+					}
+					
+					printf("Player %d killed fish %d.\n", cPlayerNo, fishToCatch);
+					
+					server.fishes[fishToCatch].alive = false;
+					
+					break;
+				}	
+				break;
         }
         // printf("writing %d\n-----------------------------------------------------\n", 2*responseLength);
         if(write(connectionSocket, response,2*responseLength) != responseLength) {
-            printf("Message not sent in its entirety. %d\n", server.input[0]);
+            //printf("Message not sent in its entirety. %d\n", server.input[0]);
         }  
         
     }
