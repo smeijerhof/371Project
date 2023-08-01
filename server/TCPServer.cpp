@@ -34,7 +34,7 @@ void* clientHandler(void* arg) {
                 printf("Handling Connect Message\n");
 
                 if (server->actorNum >= 4) {
-                    response[responseLength++] = htons(1000);
+                    response[responseLength++] = htons(PLACEHOLDER);
                 }
                 else {
                     response[responseLength++] = htons(server->actorNum++);
@@ -46,8 +46,8 @@ void* clientHandler(void* arg) {
 							response[responseLength++] = htons((uint16_t) server->fishes[i].pos.y);
                         }
                         else {
-                            response[responseLength++] = htons((uint16_t) 1000);
-                            response[responseLength++] = htons((uint16_t) 1000);
+                            response[responseLength++] = htons((uint16_t) PLACEHOLDER);
+                            response[responseLength++] = htons((uint16_t) PLACEHOLDER);
                         }
                     }
                 }

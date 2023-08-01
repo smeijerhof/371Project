@@ -90,7 +90,7 @@ void* sendConnectMessage(void* msg) {
     read(myMsg->serverSocket, response, 2*BUFFER_SIZE);
 
     // printf("read complete\n");
-    if(ntohs(response[0]) == 1000) {
+    if(ntohs(response[0]) == PLACEHOLDER) {
         printf("Could not establish connection; there are already 4 players in the game\n");
         close(myMsg->serverSocket);
         CloseWindow();
@@ -110,7 +110,7 @@ void* sendConnectMessage(void* msg) {
 		printf("	Received fish spawn at (%d, %d)\n", fishX, fishY);
 
 		game->fishes[i].spawn(fishX, fishY);
-        if(fishX == 1000 || fishY == 1000) {
+        if(fishX == PLACEHOLDER || fishY == PLACEHOLDER) {
             game->fishes[i].alive = false;
         }
     }
