@@ -24,7 +24,10 @@ struct Actor {
     int p = -1;
     bool catching = false;
     int target = 0;
-    char points = 0;
+    int points = 0;
+	int life = 0;
+	
+	Vector2 pos;
 
     struct ActorMessage {
         unsigned char buffer[256];
@@ -37,11 +40,17 @@ struct Game {
 
     Fish fishes[FISH_NUM];
     Vector2 fPositions[FISH_NUM];
+	
+	Color colors[4] = {RED, BLUE, GREEN, YELLOW};
 
     int actorNum = 0;
     Actor actors[4] {};
 
-    void draw() {
-        for (int i = 0; i < FISH_NUM; i++) fishes[i].draw();
+    void draw(Texture2D* texs) {
+		for (int i = 0; i < FISH_NUM; i++) {
+			Color col = WHITE;
+			if (fishes[i].taken) col = RED;
+			fishes[i].draw(texs[fishes[i].texNum], col);
+		}
     }
 };
