@@ -32,6 +32,7 @@ struct ServerState {
     int sock;
 
     Vector2 playerCursors[4] = {};
+	int playerScores[4] = {};
 
     int playerScores[4] =  {};
 
