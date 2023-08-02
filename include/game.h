@@ -25,6 +25,7 @@ struct Actor {
     bool catching = false;
     int target = 0;
     char points = 0;
+    int life;
 
     struct ActorMessage {
         unsigned char buffer[256];
