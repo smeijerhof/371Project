@@ -75,8 +75,6 @@ void* sendKillMessage(void* msg) {
 	outMsg[msgSize++] = htons(myMsg->token);
 	outMsg[msgSize++] = htons((uint16_t) *playerNo);
 	outMsg[msgSize++] = htons(myMsg->fishIndex);
-    printf("        Sending fish %d->%d\n",myMsg->fishIndex, outMsg[2]);
-
 	
 	write(myMsg->serverSocket, outMsg, 2*BUFFER_SIZE);//2*msgSize);
 	
@@ -93,8 +91,9 @@ void* sendCatchMessage(void* msg) {
 	
     outMsg[msgSize++] = htons(myMsg->token);
     outMsg[msgSize++] = htons((uint16_t) *playerNo);
+	
+	myMsg->fishIndex = (uint16_t) self.target;
     outMsg[msgSize++] = htons(myMsg->fishIndex);
-    printf("        Sending fish %d->%d\n",myMsg->fishIndex, outMsg[2]);
 	
     write(myMsg->serverSocket, outMsg, 2*BUFFER_SIZE);//2*msgSize);
 
@@ -110,7 +109,7 @@ void* sendCatchMessage(void* msg) {
 	
 	printf("Success in catching fish!\n");
     self.catching = true;
-    self.target = myMsg->fishIndex;
+    //self.target = myMsg->fishIndex;
     game.fishes[myMsg->fishIndex].taken = true;
 	self.life = 10;
 	
@@ -184,7 +183,7 @@ void* sendMouseMessage(void* msg) {
 int main() {
     playerNo = (int*) malloc(sizeof(int));
 
-    pthread_t updateThread, catchThread;
+    pthread_t tcpThread;
 
     int myServerSocket = connectToServer();
 
@@ -210,7 +209,7 @@ int main() {
 
         if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
             Vector2 mp = GetMousePosition();
-            for (int i = 0; i < FISH_NUM; i++) {
+			for (uint16_t i = 0; i < FISH_NUM; i++) {
                 if (mp.x > game.fishes[i].pos.x && mp.x < game.fishes[i].pos.x + FISH_WIDTH && mp.y > game.fishes[i].pos.y && mp.y < game.fishes[i].pos.y + FISH_HEIGHT && game.fishes[i].alive) {
                     // REQUEST TO CATCH
 					if (self.catching) break;
@@ -219,10 +218,10 @@ int main() {
 					struct catchMsg myMsg;
 					myMsg.serverSocket = myServerSocket;
 					myMsg.token = (uint16_t) 2;
-					myMsg.fishIndex = (uint16_t) i;
-					printf("	cast = %d\n", myMsg.fishIndex);
+					myMsg.fishIndex = i;
+					self.target = (int) i;
 					
-					pthread_create(&catchThread, NULL, sendCatchMessage, (void*) &myMsg);
+					pthread_create(&tcpThread, NULL, sendCatchMessage, (void*) &myMsg);
 					
 					break;
                 }
@@ -246,7 +245,7 @@ int main() {
 			
 			myMsg.fishIndex = (uint16_t) self.target;
 			
-			pthread_create(&catchThread, NULL, sendKillMessage, (void*) &myMsg);
+			pthread_create(&tcpThread, NULL, sendKillMessage, (void*) &myMsg);
 			printf("Fish %d has been killed\n", self.target);
 		}
 
@@ -260,7 +259,7 @@ int main() {
             myMsg.mouseX = (uint16_t) GetMousePosition().x;
             myMsg.mouseY = (uint16_t) GetMousePosition().y;
 			
-            pthread_create(&updateThread, NULL, sendMouseMessage, (void*) &myMsg);
+            pthread_create(&tcpThread, NULL, sendMouseMessage, (void*) &myMsg);
         }
 
         BeginDrawing();
