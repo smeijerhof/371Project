@@ -32,6 +32,7 @@ struct ServerState {
     int sock;
 
     Vector2 playerCursors[4] = {};
+	int playerScores[4] = {};
 
     int actorNum;
 
@@ -63,6 +64,7 @@ struct ServerState {
             (float) 100 + rand() % (SCREEN_WIDTH - 200),
             (float) 100 + rand() % (SCREEN_HEIGHT - 200) 
           );
+
           fishes[i] = f;
       }
     }
