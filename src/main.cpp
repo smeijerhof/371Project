@@ -71,6 +71,7 @@ void* sendKillMessage(void* msg) {
 	
 	struct killMsg* myMsg = (struct killMsg*) msg;
 	myMsg->token = 3;
+	myMsg->fishIndex = (uint16_t) self.target;
 	
 	outMsg[msgSize++] = htons(myMsg->token);
 	outMsg[msgSize++] = htons((uint16_t) *playerNo);
