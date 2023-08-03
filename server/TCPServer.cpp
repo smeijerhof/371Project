@@ -42,7 +42,7 @@ int main(int argc, char const *argv[]) {
 		//printf("%d\n", server.input[0]);
         switch(server.input[0]) {
 			
-            case 0:
+            case 0: // connect message
                 printf("Handling Connect Message\n");
 
                 if (server.actorNum >= 4) {
@@ -62,12 +62,20 @@ int main(int argc, char const *argv[]) {
                             response[responseLength++] = htons((uint16_t) 1000);
                             response[responseLength++] = htons((uint16_t) 1000);
                         }
+                        
+                        
                     }
+                    if (server.actorNum == 1) {
+						printf("First player has joined! Starting timer.\n");
+						response[responseLength++] = htons((uint16_t) 100);
+					} else {
+						response[responseLength++] = htons((uint16_t) 0);
+					}
                 }
                 writeResponse(connectionSocket, response, responseLength);
                 break;
 				
-            case 1:
+            case 1: // cursor update message
 				{
 					// Read message, update server values
 					// printf("Handling mouse message\n");
@@ -82,13 +90,12 @@ int main(int argc, char const *argv[]) {
 						response[responseLength++] = htons((uint16_t) server.playerCursors[i].y);
 						response[responseLength++] = htons((uint16_t) server.playerScores[i]);
 					}
-
 					writeResponse(connectionSocket, response, responseLength);
 					break;
 				}
 				
 				
-			case 2:
+			case 2: // catch message
 
 				{
 
@@ -115,13 +122,13 @@ int main(int argc, char const *argv[]) {
 					printf("	Succesful.\n");
 					
 					server.fishes[fishToCatch].taken = true;
-					response[responseLength++] = htons((uint16_t) 356);
+					response[responseLength++] = htons((uint16_t) 100);
 					
 					writeResponse(connectionSocket, response, responseLength);
 					break;
 				}
 				
-			case 3:
+			case 3: // Kill message
 				{
 					int cPlayerNo = (int) server.input[1];
 					int fishToCatch = (int) server.input[2];
@@ -138,13 +145,35 @@ int main(int argc, char const *argv[]) {
 					break;
 				}	
 				break;
+				
+			case 4: // lobby message
+			{
+				int cPlayerNo = (int) server.input[1];
+				
+				printf("Lobby started by player %d.\n", cPlayerNo);
+				
+				server.start = true;
+				
+				break;
+			}	
+			
+			case 5: // wait message
+			{
+				int cPlayerNo = (int) server.input[1];
+								
+				if (server.start) response[responseLength++] = htons((uint16_t) 0);
+				else response[responseLength++] = htons((uint16_t) 100);
+				
+				writeResponse(connectionSocket, response, responseLength);
+				
+				break;
+			}	
+			break;
         }
         // printf("writing %d\n-----------------------------------------------------\n", 2*responseLength);
-
         //if(write(connectionSocket, response,2*responseLength) != responseLength) {
             //printf("Message not sent in its entirety. %d\n", server.input[0]);
         //}  
-
         
     }
 
