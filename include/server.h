@@ -30,6 +30,8 @@ struct ServerState {
     struct sockaddr_in channel {};
     uint16_t input[BUFFER_SIZE];
     int sock;
+	
+	bool start = false;
 
     Vector2 playerCursors[4] = {};
 	int playerScores[4] = {};
