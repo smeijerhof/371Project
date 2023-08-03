@@ -1,6 +1,6 @@
 #pragma once
 
-#define SERVER_PORT 65501
+#define SERVER_PORT 65500
 #define IP "localhost"
 #define BUFFER_SIZE 32
 #define QUEUE_SIZE 10

@@ -82,6 +82,7 @@ int main(int argc, char const *argv[]) {
 						response[responseLength++] = htons((uint16_t) server.playerCursors[i].y);
 						response[responseLength++] = htons((uint16_t) server.playerScores[i]);
 					}
+
 					writeResponse(connectionSocket, response, responseLength);
 					break;
 				}
@@ -139,9 +140,11 @@ int main(int argc, char const *argv[]) {
 				break;
         }
         // printf("writing %d\n-----------------------------------------------------\n", 2*responseLength);
+
         //if(write(connectionSocket, response,2*responseLength) != responseLength) {
             //printf("Message not sent in its entirety. %d\n", server.input[0]);
         //}  
+
         
     }
 

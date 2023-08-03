@@ -105,6 +105,7 @@ void* sendCatchMessage(void* msg) {
 	printf("Response = %d\n", ntohs(response[0]));
     
 	if (ntohs(response[0]) == 0) {
+
 		printf("Failure in catching fish!\n");
 		return 0;
 	}
@@ -218,6 +219,7 @@ int main() {
 
     SetTargetFPS(30); 
 
+
     Image cursorImage = LoadImage("assets/Cursor.png");
 	Texture2D cursorTexture = LoadTextureFromImage(cursorImage);
 	UnloadImage(cursorImage);
@@ -248,13 +250,16 @@ int main() {
         if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
 			printf("	get mouse pos\n");
             Vector2 mp = GetMousePosition();
+
 			printf("	checking all fish\n");
 			for (uint16_t i = 0; i < FISH_NUM; i++) {
                 if (mp.x > game.fishes[i].pos.x && mp.x < game.fishes[i].pos.x + FISH_WIDTH && mp.y > game.fishes[i].pos.y && mp.y < game.fishes[i].pos.y + FISH_HEIGHT && game.fishes[i].alive) {
 					printf("		colliding with fish\n");
                     // REQUEST TO CATCH
 					if (self.catching) break;
+
 					printf("		Requesting to catch fish %d\n", i);
+
 					
 					struct catchMsg myMsg;
 					myMsg.serverSocket = myServerSocket;
@@ -262,7 +267,9 @@ int main() {
 					myMsg.fishIndex = i;
 					self.target = (int) i;
 					
+
 					printf("		Sending catch message %d\n", i);
+
 					pthread_create(&tcpThread, NULL, sendCatchMessage, (void*) &myMsg);
 					
 					break;
@@ -270,6 +277,7 @@ int main() {
             }
         }
         
+
         
 		if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT) && self.catching) {
 			printf("	killing fish\n");
@@ -281,6 +289,7 @@ int main() {
         
         if (self.life <= 0 && self.catching && game.fishes[self.target].alive) {
 			printf("	killed fish\n");
+
 			self.catching = false;
 			game.fishes[self.target].alive = false;
 			self.points++;

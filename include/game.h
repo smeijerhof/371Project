@@ -24,10 +24,12 @@ struct Actor {
     int p = -1;
     bool catching = false;
     int target = 0;
+
     int points = 0;
 	int life = 0;
 	
 	Vector2 pos;
+
 
     struct ActorMessage {
         unsigned char buffer[256];
