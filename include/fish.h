@@ -13,6 +13,8 @@ struct Fish {
     Vector2 pos {};
     bool alive = false;
     bool taken = false;
+	
+	int texNum = 0;
 
     void spawn(float x, float y) {
         alive = true;
@@ -20,20 +22,20 @@ struct Fish {
         pos = {x, y};
     }
 
-    void draw() {
+    void draw(Texture2D tex, Color c) {
         if (!alive) return;
       
         Vector2 drawPos = pos;
-        Color c = RED;
         if (taken) {
             drawPos.x += (rand() % 10) - 5;
             drawPos.y += (rand() % 10) - 5;
-            c = GREEN;
         }
         
-        DrawRectangleV(drawPos, {FISH_WIDTH, FISH_HEIGHT}, c);
+        DrawTextureEx(tex, (Vector2) {drawPos.x, drawPos.y}, 0.f, 0.2f, c);
+        
+        //DrawRectangleV(drawPos, {FISH_WIDTH, FISH_HEIGHT}, c);
 
-		Rectangle rec = { drawPos.x, drawPos.y, FISH_WIDTH, FISH_HEIGHT };
-        DrawRectangleLinesEx(rec, 10, BLACK);
+		//Rectangle rec = { drawPos.x, drawPos.y, FISH_WIDTH, FISH_HEIGHT };
+        //DrawRectangleLinesEx(rec, 10, BLACK);
     }
 };

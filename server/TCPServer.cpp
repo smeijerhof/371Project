@@ -1,5 +1,11 @@
 #include "../include/server.h"
 
+void writeResponse(int connectionSocket, uint16_t* response, int responseLength) {
+	if(write(connectionSocket, response,2*responseLength) != responseLength) {
+		//printf("Message not sent in its entirety. %d\n", server.input[0]);
+	}
+}
+
 int main(int argc, char const *argv[]) {
     time_t seed { 0 };
     seed = time(NULL);
@@ -50,6 +56,7 @@ int main(int argc, char const *argv[]) {
 							
                             response[responseLength++] = htons((uint16_t) server.fishes[i].pos.x);
 							response[responseLength++] = htons((uint16_t) server.fishes[i].pos.y);
+							
                         }
                         else {
                             response[responseLength++] = htons((uint16_t) 1000);
@@ -57,6 +64,7 @@ int main(int argc, char const *argv[]) {
                         }
                     }
                 }
+                writeResponse(connectionSocket, response, responseLength);
                 break;
 				
             case 1:
@@ -74,6 +82,8 @@ int main(int argc, char const *argv[]) {
 						response[responseLength++] = htons((uint16_t) server.playerCursors[i].y);
 						response[responseLength++] = htons((uint16_t) server.playerScores[i]);
 					}
+
+					writeResponse(connectionSocket, response, responseLength);
 					break;
 				}
 				
@@ -81,6 +91,7 @@ int main(int argc, char const *argv[]) {
 			case 2:
 
 				{
+
 					int cPlayerNo = (int) server.input[1];
 					int fishToCatch = (int) server.input[2];
 					
@@ -104,8 +115,9 @@ int main(int argc, char const *argv[]) {
 					printf("	Succesful.\n");
 					
 					server.fishes[fishToCatch].taken = true;
-					response[responseLength++] = htons((uint16_t) 1);
+					response[responseLength++] = htons((uint16_t) 356);
 					
+					writeResponse(connectionSocket, response, responseLength);
 					break;
 				}
 				
@@ -128,9 +140,11 @@ int main(int argc, char const *argv[]) {
 				break;
         }
         // printf("writing %d\n-----------------------------------------------------\n", 2*responseLength);
-        if(write(connectionSocket, response,2*responseLength) != responseLength) {
+
+        //if(write(connectionSocket, response,2*responseLength) != responseLength) {
             //printf("Message not sent in its entirety. %d\n", server.input[0]);
-        }  
+        //}  
+
         
     }
 
