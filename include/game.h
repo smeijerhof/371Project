@@ -24,12 +24,10 @@ struct Actor {
     int p = -1;
     bool catching = false;
     int target = 0;
-
     int points = 0;
 	int life = 0;
 	
 	Vector2 pos;
-
 
     struct ActorMessage {
         unsigned char buffer[256];
@@ -38,7 +36,12 @@ struct Actor {
 
 struct Game {
     time_t seed { 0 };
-    float elapsed = 0.f;
+	
+    float waitingTimer = 0.f;
+	float elapsed = 0.f;
+	
+	bool waiting = false;
+	bool canPlay = false;
 
     Fish fishes[FISH_NUM];
     Vector2 fPositions[FISH_NUM];
