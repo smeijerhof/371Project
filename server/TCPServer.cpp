@@ -1,4 +1,5 @@
 #include "../include/server.h"
+#include "../include/def.h"
 
 void writeResponse(int connectionSocket, uint16_t* response, int responseLength) {
 	if(write(connectionSocket, response,2*responseLength) != responseLength) {

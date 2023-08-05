@@ -6,6 +6,7 @@
 #define QUEUE_SIZE 10
 
 #define FISH_NUM 10
+#define PLAYER_NUM 4
 
 #define SCREEN_WIDTH 800
 #define SCREEN_HEIGHT 450

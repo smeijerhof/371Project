@@ -33,9 +33,9 @@ struct Fish {
         
         DrawTextureEx(tex, (Vector2) {drawPos.x, drawPos.y}, 0.f, 0.2f, c);
         
-        //DrawRectangleV(drawPos, {FISH_WIDTH, FISH_HEIGHT}, c);
+        DrawRectangleV(drawPos, {FISH_WIDTH, FISH_HEIGHT}, c);
 
-		//Rectangle rec = { drawPos.x, drawPos.y, FISH_WIDTH, FISH_HEIGHT };
-        //DrawRectangleLinesEx(rec, 10, BLACK);
+		Rectangle rec = { drawPos.x, drawPos.y, FISH_WIDTH, FISH_HEIGHT };
+        DrawRectangleLinesEx(rec, 10, BLACK);
     }
 };
