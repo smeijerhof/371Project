@@ -16,7 +16,7 @@ The player with the most points when there are no fish remaining win the game.
 
 ## Installation
 
-Go to [release v1.0](https://github.com/smeijerhof/371Project/releases/tag/release) and install the zip file.
+Go to [release](https://github.com/smeijerhof/371Project/releases/tag/release) and install the zip file.
 
 ## Running the Game
 
