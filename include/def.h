@@ -8,7 +8,7 @@
 #define QUEUE_SIZE 4
 #define PLACEHOLDER 1000
 
-#define FISH_NUM 1
+#define FISH_NUM 13
 #define PLAYER_NUM 4
 
 #define SCREEN_WIDTH 800
