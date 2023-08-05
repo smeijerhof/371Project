@@ -63,7 +63,7 @@ void* sendCatchMessage(void* msg) {
 	
 	if (success == MESSAGE_NEGATIVE) {
 		printf("	-> Failure in luring fish!\n");
-		message->state->fishes[message->fishIndex].taken = message->readResponse();
+		//message->state->fishes[message->fishIndex].taken = message->readResponse();
 		return 0;
 	} else if (success == MESSAGE_POSITIVE) {
 		printf("	-> Success in luring fish!\n");
