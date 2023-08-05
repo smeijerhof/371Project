@@ -92,8 +92,15 @@ void* clientHandler(void* serverArg, void* socketArg) {
 	}
 	
 	// close connections
+	printf("Closing socket\n");
 	close(connectionSocket);
-	close(server->sock);
+	server->connections--;
+	
+	if (server->connections == 0) {
+		printf("Closing server\n");
+		close(server->sock);
+		exit(0);
+	}
 	return 0;
 }
 
@@ -112,12 +119,17 @@ int main(int argc, char const *argv[]) {
 		
 		// Create a new thread to handle the client, and detach the thread to allow it to run independently
 		if (!server.start) {
+			if (server.connections == -1) server.connections = 0;
+			server.connections++;
+			
 			std::thread clientThread(clientHandler, (void*) &server, (void*) &clientSocket);
 			clientThread.detach();
 		}
 		
+		if (server.connections == 0) break;
 	}
-	
+	printf("closing server\n");
+	close(server.sock);
 	return 0;
 }
 
