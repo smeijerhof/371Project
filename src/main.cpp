@@ -132,24 +132,53 @@ void handleGameOver(Game state) {
 	EndDrawing();
 }
 
+void joinLobby(Game* state, pthread_t* connectionThread, int clientSocket) {
+	// Upon connection establishment, instantiate local game with provided fish locations
+	ClientMessage connectMessage;
+	connectMessage.construct(state, clientSocket, CONNECTION_MESSAGE);
+	
+	pthread_create(connectionThread, NULL, sendConnectionMessage, (void*) &connectMessage);
+	pthread_join(*connectionThread, NULL);
+}
+
+void* startServer(void* arg) {
+	printf("Started server\n");
+	std::system("./server");
+	
+	return 0;
+}
+
 int main() {
 	Game state;
 	initRaylib(&state);
 	
+	pthread_t serverThread;
 	pthread_t tcpThread;
 	pthread_t connectionThread;
-	
-	int clientSocket = connectToServer();
-	
-	// Upon connection establishment, instantiate local game with provided fish locations
-	ClientMessage connectMessage;
-	connectMessage.construct(&state, clientSocket, CONNECTION_MESSAGE);
-
-	pthread_create(&connectionThread, NULL, sendConnectionMessage, (void*) &connectMessage);
-	pthread_join(connectionThread, NULL);
+	int clientSocket = 0;
 	
     while (!WindowShouldClose()) {
-
+		
+		if (state.menu) {
+			
+			if (IsKeyPressed(KEY_H)) {
+				pthread_create(&serverThread, NULL, startServer, NULL);
+			}
+			
+			if (IsKeyPressed(KEY_J)) {
+				state.menu = false;
+				clientSocket = connectToServer();
+				joinLobby(&state, &connectionThread, clientSocket);
+			}
+			BeginDrawing();
+				ClearBackground(DARKBLUE);
+				DrawText("Fishing Frenzy", (SCREEN_WIDTH - MeasureText("Fishing Frenzy", 50)) / 2.f, 20, 50, WHITE);
+				DrawText("Press the H KEY to host a server", (SCREEN_WIDTH - MeasureText("Press the H KEY to host a server", 50)) / 2.f, 70, 50, WHITE);
+				DrawText("Press the J KEY to join the server", (SCREEN_WIDTH - MeasureText("Press the J KEY to join the server", 50)) / 2.f, 120, 50, WHITE);
+			EndDrawing();
+			continue;
+		}
+		
 		state.elapsed += GetFrameTime();
 		if (state.lobby) {
 			handleLobby(&state, &tcpThread, clientSocket);
