@@ -67,6 +67,7 @@ struct Game {
 	
 	bool lobby;
 	bool host;
+	bool menu;
 	
 	uint16_t selfNumber;
 	uint16_t numberOfClients;
@@ -96,6 +97,7 @@ struct Game {
 		
 		lobby = false;
 		host = false;
+		menu = true;
 		
 		selfNumber = FISH_NOT_TAKEN;
 		numberOfClients = 0;
