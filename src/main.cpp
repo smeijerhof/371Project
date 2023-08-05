@@ -1,8 +1,13 @@
 #include "../include/game.h"
+#include "../include/client_message.h"
+#include "../include/client_connection.h"
+#include "../include/client_updates.h"
 
-Game game;
-Actor self;
-int* playerNo;
+std::mutex mtxMousePos;
+std::mutex mtxLeftMouseButton;
+std::mutex mtxZKeyPressed;
+std::mutex mtxGame;
+//std::mutex fishCatch;
 
 void printError(const char* message) {
     perror(message);
@@ -12,7 +17,7 @@ void printError(const char* message) {
 int connectToServer() {
     struct hostent* serverInfo;
     serverInfo = gethostbyname(IP);
-    if(!serverInfo)
+	if(serverInfo == NULL)
         printError("Could not retrieve host information");
 
     // Initialize destination socket
@@ -36,191 +41,16 @@ int connectToServer() {
 
 }
 
-struct crsrMsg {
-    int serverSocket;
-    uint16_t token = 1;
-    uint16_t playerNo;
-    uint16_t mouseX;
-    uint16_t mouseY;
-	uint16_t score;
-};
-
-struct catchMsg {
-    int serverSocket;
-    uint16_t token = 2;
-    uint16_t playerNo;
-    uint16_t fishIndex;
-};
-
-struct killMsg {
-	int serverSocket;
-	uint16_t token = 3;
-	uint16_t playerNo;
-	uint16_t fishIndex;
-};
-
-struct connMsg {
-    int serverSocket;
-    uint16_t token = 0;
-};
-
-void* sendKillMessage(void* msg) {
-	// Based on message needing to be sent from server, client sends appropriate token, awaits response on new thread
-	uint16_t outMsg[BUFFER_SIZE];
-	int msgSize = 0;
+void initRaylib(Game* state) {
+	InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "Fishing Frenzy");
 	
-	struct killMsg* myMsg = (struct killMsg*) msg;
-	myMsg->token = 3;
-	myMsg->fishIndex = (uint16_t) self.target;
+	SetTargetFPS(30);
 	
-	outMsg[msgSize++] = htons(myMsg->token);
-	outMsg[msgSize++] = htons((uint16_t) *playerNo);
-	outMsg[msgSize++] = htons(myMsg->fishIndex);
-	
-	write(myMsg->serverSocket, outMsg, 2*BUFFER_SIZE);//2*msgSize);
-	
-	return 0;
-}
-
-void* sendCatchMessage(void* msg) {
-    // Based on message needing to be sent from server, client sends appropriate token, awaits response on new thread
-    uint16_t outMsg[BUFFER_SIZE];
-    int msgSize = 0;
-
-    struct catchMsg* myMsg = (struct catchMsg*) msg;
-	myMsg->token = 2;
-	
-    outMsg[msgSize++] = htons(myMsg->token);
-    outMsg[msgSize++] = htons((uint16_t) *playerNo);
-	
-	myMsg->fishIndex = (uint16_t) self.target;
-    outMsg[msgSize++] = htons(myMsg->fishIndex);
-	
-    write(myMsg->serverSocket, outMsg, 2*BUFFER_SIZE);//2*msgSize);
-
-    uint16_t response[BUFFER_SIZE];
-	printf("Reading Response!\n");
-    read(myMsg->serverSocket, response, 2*BUFFER_SIZE);
-
-	printf("Response = %d\n", ntohs(response[0]));
-    
-	if (ntohs(response[0]) == 0) {
-		printf("Failure in catching fish!\n");
-		return 0;
-	}
-	
-	printf("Success in catching fish!\n");
-    self.catching = true;
-    //self.target = myMsg->fishIndex;
-    game.fishes[myMsg->fishIndex].taken = true;
-	self.life = 10;
-	
-    return 0;
-}
-
-void* sendConnectMessage(void* msg) {
-    uint16_t outMsg[BUFFER_SIZE];
-    int msgSize = 0;
-
-    struct connMsg* myMsg = (struct connMsg*) msg;
-    outMsg[msgSize++] = htons(myMsg->token);
-
-    if(write(myMsg->serverSocket, outMsg, 2*msgSize) != 2*msgSize) {
-        printf("Message not sent in its entirety.\n");
-    }
-
-    uint16_t response[BUFFER_SIZE];
-    read(myMsg->serverSocket, response, 2*BUFFER_SIZE);
-
-    // printf("read complete\n");
-	int responseNum = 0;
-	if(ntohs(response[responseNum]) == 1000) {
-        printf("Could not establish connection; there are already 4 players in the game\n");
-        close(myMsg->serverSocket);
-        CloseWindow();
-        return 0;
-    }
-
-    Actor newActor;
-	newActor.p = ntohs(response[responseNum]);
-	*playerNo = (int) ntohs(response[responseNum++]);
-
-    game.actors[game.actorNum++] = newActor;
-
-    for(int i = 0; i < FISH_NUM; i++) {
-		int fishX = (int) ntohs(response[responseNum++]);
-		int fishY = (int) ntohs(response[responseNum++]);
-		
-		printf("	Received fish spawn at (%d, %d)\n", fishX, fishY);
-
-		game.fishes[i].spawn(fishX, fishY);
-		game.fishes[i].texNum = rand() % 3;
-		
-        if(fishX == 1000 || fishY == 1000) {
-            game.fishes[i].alive = false;
-        }
-    }
-
-    return 0;
-}
-
-void* sendMouseMessage(void* msg) {
-    // Based on message needing to be sent from server, client sends appropriate token, awaits response on new thread
-    uint16_t outMsg[BUFFER_SIZE];
-    int msgSize = 0;
-
-    struct crsrMsg* myMsg = (struct crsrMsg*) msg;
-		
-    outMsg[msgSize++] = htons(myMsg->token);
-    outMsg[msgSize++] = htons((uint16_t) *playerNo);
-    outMsg[msgSize++] = htons(myMsg->mouseX);
-    outMsg[msgSize++] = htons(myMsg->mouseY);
-	outMsg[msgSize++] = htons(myMsg->score);
-	
-    write(myMsg->serverSocket, outMsg, 2*BUFFER_SIZE);//2*msgSize);
-
-    uint16_t response[BUFFER_SIZE];
-    read(myMsg->serverSocket, response, 2*BUFFER_SIZE);
-	
-	// Handle other player data
-	int responseNum = 0;
-	for (int i = 0; i < PLAYER_NUM; i++) {
-		if (i == *playerNo) {
-			responseNum += 3;
-			continue;
-		}
-		game.actors[i].pos.x = (float) ntohs(response[responseNum++]);
-		game.actors[i].pos.x = (float) ntohs(response[responseNum++]);
-		game.actors[i].points = (int) ntohs(response[responseNum++]);
-	}
-
-    return 0;
-}
-
-int main() {
-    playerNo = (int*) malloc(sizeof(int));
-
-    pthread_t tcpThread;
-
-    int myServerSocket = connectToServer();
-
-
-    // Upon connection establishment, instantiate local game with provided fish locations
-    struct connMsg* myConnMsg = new struct connMsg;
-    myConnMsg->serverSocket = myServerSocket;
-    pthread_t connThread;
-
-    pthread_create(&connThread, NULL, sendConnectMessage, (void*) myConnMsg);
-    pthread_join(connThread, NULL);
-
-
-    InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "Fishing Frenzy");
-
-    SetTargetFPS(30); 
-
-    Image cursorImage = LoadImage("assets/Cursor.png");
+	Image cursorImage = LoadImage("assets/Cursor.png");
 	Texture2D cursorTexture = LoadTextureFromImage(cursorImage);
 	UnloadImage(cursorImage);
+	
+	state->cursorTexture = cursorTexture;
 	
 	Image fish1 = LoadImage("assets/chub.png");
 	Image fish2 = LoadImage("assets/pike.png");
@@ -234,123 +64,215 @@ int main() {
 	UnloadImage(fish2);
 	UnloadImage(fish3);
 	
-	Texture2D fishTextures[3] = {
-		fish1Tex,
-		fish2Tex,
-		fish3Tex
-	};
+	state->fishTextures[0] = fish1Tex;
+	state->fishTextures[1] = fish2Tex;
+	state->fishTextures[2] = fish3Tex;
+}
 
-    while (!WindowShouldClose()) {
-        //printf("counting time\n");
-        game.elapsed += GetFrameTime();
+void handleLobby(Game* state, pthread_t* tcpThread, int clientSocket) {
+	if (state->host) {
+		if (state->lobbyTimer > 0.f) {
+			state->lobbyTimer += GetFrameTime();
+			
+			if (state->lobbyTimer >= state->lobbyLength) {
+				ClientMessage startLobbyMessage;
+				startLobbyMessage.construct(state, clientSocket, START_LOBBY_MESSAGE);
+				
+				pthread_create(tcpThread, NULL, sendStartLobbyMessage, (void*) &startLobbyMessage);
+				pthread_join(*tcpThread, NULL);
+				
+				state->lobby = false;
+			}
+			
+			int timeRemaining = state->lobbyLength - state->lobbyTimer;
+			int titleFont = 50;
+			int subFont = 30;
+			
+			BeginDrawing();
+			ClearBackground(DARKBLUE);
+			DrawText(TextFormat("Game starting in %d seconds", timeRemaining), (SCREEN_WIDTH - MeasureText(TextFormat("Game starting in %d seconds", timeRemaining), titleFont)) / 2.f, 20, titleFont, WHITE);
+			EndDrawing();
+		} else {
+			if (IsKeyPressed(KEY_Z)) state->lobbyTimer = 0.01f;
+			
+			int titleFont = 50;
+			int subFont = 30;
+			
+			BeginDrawing();
+			ClearBackground(DARKBLUE);
+			DrawText("You are the host.", (SCREEN_WIDTH - MeasureText("You are the host.", titleFont)) / 2.f, 20, titleFont, WHITE);
+			DrawText("Press z to start the game!", (SCREEN_WIDTH - MeasureText("Press z to start the game!", subFont)) / 2.f, 20 + titleFont + 20, subFont, WHITE);
+			
+			EndDrawing();
+		}
+		return;
+	}
+	
+	ClientMessage waitLobbyMessage;
+	waitLobbyMessage.construct(state, clientSocket, WAIT_LOBBY_MESSAGE);
+	
+	pthread_create(tcpThread, NULL, sendWaitLobbyMessage, (void*) &waitLobbyMessage);
+	pthread_join(*tcpThread, NULL);
+	
+	int subFont = 30;
+	
+	BeginDrawing();
+	ClearBackground(DARKBLUE);
+	DrawText("Waiting for host to start the game...", (SCREEN_WIDTH - MeasureText("Waiting for host to start the game...", subFont)) / 2.f, 20, subFont, WHITE);
+	EndDrawing();
+}
+
+void handleGameOver(Game state) {
+	BeginDrawing();
+		ClearBackground(DARKBLUE);
 		
-		printf("check for catch request\n");
-        if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
-			printf("	get mouse pos\n");
-            Vector2 mp = GetMousePosition();
-			printf("	checking all fish\n");
-			for (uint16_t i = 0; i < FISH_NUM; i++) {
-                if (mp.x > game.fishes[i].pos.x && mp.x < game.fishes[i].pos.x + FISH_WIDTH && mp.y > game.fishes[i].pos.y && mp.y < game.fishes[i].pos.y + FISH_HEIGHT && game.fishes[i].alive) {
-					printf("		colliding with fish\n");
-                    // REQUEST TO CATCH
-					if (self.catching) break;
-					printf("		Requesting to catch fish %d\n", i);
-					
-					struct catchMsg myMsg;
-					myMsg.serverSocket = myServerSocket;
-					myMsg.token = (uint16_t) 2;
-					myMsg.fishIndex = i;
-					self.target = (int) i;
-					
-					printf("		Sending catch message %d\n", i);
-					pthread_create(&tcpThread, NULL, sendCatchMessage, (void*) &myMsg);
-					
-					break;
-                }
-            }
-        }
-        
-        
-		if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT) && self.catching) {
-			printf("	killing fish\n");
+		DrawText("Game over!", (SCREEN_WIDTH - MeasureText("Game over!", 50)) / 2.f, 20, 50, WHITE);
+		DrawText(TextFormat("Player %d wins!!!", state.winner + 1), (SCREEN_WIDTH - MeasureText(TextFormat("Player %d wins!!!", state.winner + 1), 70)) / 2.f, 70, 70, state.clients[state.winner].playerColors[state.winner]);
+	
+	EndDrawing();
+}
 
-			game.fishes[self.target].taken = true;
-            self.life--;
-        } 
-        
-        
-        if (self.life <= 0 && self.catching && game.fishes[self.target].alive) {
-			printf("	killed fish\n");
-			self.catching = false;
-			game.fishes[self.target].alive = false;
-			self.points++;
-			self.life = 0;
+int main() {
+	Game state;
+	initRaylib(&state);
+	
+	pthread_t tcpThread;
+	pthread_t connectionThread;
+	
+	int clientSocket = connectToServer();
+	
+	// Upon connection establishment, instantiate local game with provided fish locations
+	ClientMessage connectMessage;
+	connectMessage.construct(&state, clientSocket, CONNECTION_MESSAGE);
+
+	pthread_create(&connectionThread, NULL, sendConnectionMessage, (void*) &connectMessage);
+	pthread_join(connectionThread, NULL);
+	
+    while (!WindowShouldClose()) {
+
+		state.elapsed += GetFrameTime();
+		if (state.lobby) {
+			handleLobby(&state, &tcpThread, clientSocket);
+			continue;
+		}
+		
+		for (int i = 0; i < FISH_NUM; i++) {
+			if (state.fishes[i].alive) break;
 			
-			struct killMsg myMsg;
-			myMsg.serverSocket = myServerSocket;
-			myMsg.token = (uint16_t) 3;
+			if (i == FISH_NUM - 1) {
+				ClientMessage overMessage;
+				overMessage.construct(&state, clientSocket, OVER_MESSAGE);
+				
+				pthread_create(&tcpThread, NULL, sendOverMessage, (void*) &overMessage);
+				pthread_join(tcpThread, NULL);
+				
+				state.gameOver = true;
+			}
 			
-			myMsg.fishIndex = (uint16_t) self.target;
-			
-			pthread_create(&tcpThread, NULL, sendKillMessage, (void*) &myMsg);
-			printf("Fish %d has been killed\n", self.target);
 		}
 
-        // Multi-threaded client Testing
-        //printf("%d\n",(int) (fmod(game.elapsed,0.1f) * 100));
-        
-        if (int(fmod(game.elapsed, 0.1f) * 100) == 0) {
-			printf("	sending mouse message\n");
-            struct crsrMsg myMsg;
-            myMsg.serverSocket = myServerSocket;
-            myMsg.token = (uint16_t) 1;
+		if (state.gameOver) {
+			handleGameOver(state);
+			continue;
+		}
+		
+		if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT) && state.catching) {
+			state.fishes[state.target].taken = state.selfNumber;
+			state.fishLife--;
+		}
+		
+		if (state.fishLife <= 0 && state.catching && state.fishes[state.target].alive) {			
+			state.catching = false;
+			state.fishes[state.target].alive = false;
+			state.score++;
+			state.fishLife = 10;
+			state.catchTimer = 0.f;
+			state.clients[state.selfNumber].lure = -1;
 			
-            myMsg.mouseX = (uint16_t) GetMousePosition().x;
-            myMsg.mouseY = (uint16_t) GetMousePosition().y;
+			FishMessage terminateMessage;
+			terminateMessage.construct(&state, clientSocket, CATCH_TERMINATION_MESSAGE, state.selfNumber, state.target, true);
 			
-            pthread_create(&tcpThread, NULL, sendMouseMessage, (void*) &myMsg);
-        }
-
+			pthread_create(&tcpThread, NULL, sendTerminateMessage, (void*) &terminateMessage);
+			pthread_join(tcpThread, NULL);
+		}
+		
+		if (state.catchTimer > state.catchLength && state.catching) {
+			state.catching = false;
+			state.fishLife = 10;
+			state.catchTimer = 0.f;
+			state.fishes[state.target].taken = FISH_NOT_TAKEN;
+			state.clients[state.selfNumber].lure = -1;
+			
+			FishMessage terminateMessage;
+			terminateMessage.construct(&state, clientSocket, CATCH_TERMINATION_MESSAGE, state.selfNumber, state.target, false);
+			
+			pthread_create(&tcpThread, NULL, sendTerminateMessage, (void*) &terminateMessage);
+			pthread_join(tcpThread, NULL);
+		}
+		
+		if (state.catchTimer > 0.f) state.catchTimer += GetFrameTime();
+		
+		if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+			Vector2 mp = GetMousePosition();
+			for (uint16_t i = 0; i < FISH_NUM; i++) {
+				if (state.fishes[i].colliding(mp.x, mp.y)) {
+					if (state.catching) break;
+					FishMessage catchMessage;
+					catchMessage.construct(&state, clientSocket, REQUEST_CATCH_MESSAGE, state.selfNumber, i);
+					
+					pthread_create(&tcpThread, NULL, sendCatchMessage, (void*) &catchMessage);
+					pthread_join(tcpThread, NULL);
+					
+					state.catchTimer = 0.01f;
+					break;
+				}
+			}
+		}
+		
+		// Update Message
+		state.syncSelf(GetMousePosition());
+		UpdateMessage updateMessage;
+		updateMessage.construct(&state, clientSocket, CLIENT_UPDATE_MESSAGE, state.selfNumber, state.clients[state.selfNumber].pos.x, state.clients[state.selfNumber].pos.y, state.clients[state.selfNumber].score);
+		pthread_create(&tcpThread, NULL, sendUpdateMessage, (void*) &updateMessage);
+		pthread_join(tcpThread, NULL);
+		
+		for (int i = 0; i < FISH_NUM; i++) {
+			for (int j = 0; j < state.numberOfClients; j++) {
+				if (j == state.selfNumber) continue;
+				
+				if (state.clients[j].lure == i) state.fishes[i].taken = j;
+				else state.fishes[i].taken = FISH_NOT_TAKEN;
+			}
+		}
+		if (state.catching) state.fishes[state.target].taken = state.selfNumber;
+		
         BeginDrawing();
-		printf("	drawing\n");
             ClearBackground(DARKBLUE);
 			
-			printf("		draw scores\n");
-			for (int i = 0; i < game.actorNum; i++) {
-				Actor a = game.actors[i];
-				if (i == *playerNo) a = self;
-				DrawText(TextFormat("Player %d Points = %d", i+1, a.points), 20, 20 + i * 20, 20, game.colors[i]);
-			}
+			state.syncSelf(GetMousePosition());
 			
-			printf("		draw ui\n");
-            if (self.catching) {
+			for (int i = 0; i < state.numberOfClients; i++) state.clients[i].drawScore();
+			
+			if (state.catching) {
                 DrawText("Fish Hooked!", (SCREEN_WIDTH - MeasureText("Fish Hooked!", 50)) / 2.f, 20, 50, WHITE);
-				DrawText("Click the mouse quickly!", (SCREEN_WIDTH - MeasureText("Click the mouse quickly!", 35)) / 2.f, 70, 35, WHITE);
+				DrawText("Click the mouse quickly!", (SCREEN_WIDTH - MeasureText("Click the mouse quickly!", 20)) / 2.f, 70, 20, WHITE);
+				DrawText(TextFormat("%.2fs left!!!", state.catchLength - state.catchTimer), (SCREEN_WIDTH - MeasureText(TextFormat("%.2fs left!!!", state.catchLength - state.catchTimer), 35)) / 2.f, 90, 35, RED);
             }
 			
-			printf("		draw fishes\n");
-            game.draw(fishTextures);
+            state.drawFish();
 			
-			printf("		draw actors\n");
-			for (int i = 0; i < game.actorNum; i++) {
-				if (i == *playerNo) continue;
-				DrawTextureEx(cursorTexture, (Vector2) {game.actors[i].pos.x, game.actors[i].pos.y}, 0.f, 5.f, game.colors[i]);
-			}
-			
-			printf("		draw player\n");
-			DrawTextureEx(cursorTexture, (Vector2) {GetMousePosition().x, GetMousePosition().y}, 0.f, 5.f, game.colors[*playerNo]);
-			
-
+			for (int i = 0; i < state.numberOfClients; i++) state.clients[i].drawMouse(state.cursorTexture);
+						
         EndDrawing();
-		printf("done drawing\n");
     }
+    
 	
-	UnloadTexture(fishTextures[0]);
-	UnloadTexture(fishTextures[1]);
-	UnloadTexture(fishTextures[2]);
+	UnloadTexture(state.fishTextures[0]);
+	UnloadTexture(state.fishTextures[1]);
+	UnloadTexture(state.fishTextures[2]);
+	UnloadTexture(state.cursorTexture);
 	
-	UnloadTexture(cursorTexture);
-    close(myServerSocket);
+    close(clientSocket);
     CloseWindow();
     return 0;
 }
