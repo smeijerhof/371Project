@@ -26,13 +26,20 @@ Download `FishingFrenzy.zip` into your directory of choice. Extract its contents
 ```
 unzip FishingFrenzy.zip
 ```
+You can start a server by opening a terminal in `FishingFrenzy` and running
+```
+./server
+```
 Then run the exectuable found at `FishingFrenzy/frenzy` by double clicking it.
 
 Fishing Frenzy is confirmed to work on Debian-based systems.
 
 ## Instructions
 
-After booting up the game, you can start the server by pressing the h key. Only one player should start the server.
+You can start a server by opening a terminal in `FishingFrenzy` and running
+```
+./server
+```
 After and only after a server has been started, each player, including the one who started the server, can press the j key to join the game.
 The first player to join is the host. The host can start the game by pressing the z key, after which a short timer will start before actually commencing the game.
 
