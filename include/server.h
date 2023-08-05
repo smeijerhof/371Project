@@ -16,10 +16,27 @@
 
 // Project Libs
 #include "raylib.h"
-#include "game.h"
 #include "fish.h"
+#include "game.h"
 #include "def.h"
 //
+
+#include <iostream>
+#include <time.h>
+#include <stdlib.h>
+
+#include <stdio.h>
+#include <string.h>
+#include <sys/socket.h>
+#include <sys/types.h>
+#include <netinet/in.h>
+#include <netdb.h>
+#include <unistd.h>
+#include <pthread.h>
+#include <vector>
+#include <thread>
+#include <math.h>
+
 
 void printError(const char* message) {
     perror(message);
