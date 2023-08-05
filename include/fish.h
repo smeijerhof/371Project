@@ -59,5 +59,9 @@ struct Fish {
 		if (taken != FISH_NOT_TAKEN) c = fishColors[taken];
         
 		DrawTextureEx(texure, (Vector2) {drawPos.x, drawPos.y}, 0.f, textureScale, c);
+		// DrawRectangleV(drawPos, {width, height}, c);
+
+		// Rectangle rec = { drawPos.x, drawPos.y, width, height };
+        // DrawRectangleLinesEx(rec, 10, BLACK);
     }
 };
