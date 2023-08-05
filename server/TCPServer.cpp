@@ -1,6 +1,10 @@
 #include "../include/server.h"
 
-std::mutex mtx;
+std::mutex mtxMouse;
+std::mutex mtxCatch;
+std::mutex mtxKill;
+std::mutex mtxLobby;
+std::mutex mtxWait;
 ServerState* server;
 
 int i = 0;
@@ -61,7 +65,7 @@ void* clientHandler(void* arg) {
 				
 			case 1:
 				{
-					mtx.lock();
+					// mtxMouse.lock();
 					// Read message, update server values
 					// printf("Handling mouse message\n");
 					int playerNo = (int) threadInputBuffer[1];
@@ -78,22 +82,22 @@ void* clientHandler(void* arg) {
 						response[responseLength++] = htons((uint16_t) server->playerCursors[i].y);
 						response[responseLength++] = htons((uint16_t) server->playerScores[i]);
 					}
-					mtx.unlock();
+					// mtxMouse.unlock();
 				}
 				
 
 				break;
 			case 2: // catch message
 				
-			{
-				mtx.lock();
-				
+			{				
+				mtxCatch.lock();
 				int cPlayerNo = (int) threadInputBuffer[1];
 				int fishToCatch = (int) threadInputBuffer[2];
 				
 				if (fishToCatch < 0 || fishToCatch >= FISH_NUM) {
 					printf("Error in player %d catching fish %d: corrupted index\n", cPlayerNo, fishToCatch);
 					response[responseLength++] = htons((uint16_t) 0);
+					mtxCatch.unlock();
 					break;
 				}
 				
@@ -101,11 +105,13 @@ void* clientHandler(void* arg) {
 				if (!server->fishes[fishToCatch].alive) {
 					printf("	Fish is dead.\n");
 					response[responseLength++] = htons((uint16_t) 0);
+					mtxCatch.unlock();
 					break;
 				}
 				if (server->fishes[fishToCatch].taken) {
 					printf("	Fish is already being caught.\n");
 					response[responseLength++] = htons((uint16_t) 0);
+					mtxCatch.unlock();
 					break;
 				}
 				printf("	Succesful.\n");
@@ -113,32 +119,33 @@ void* clientHandler(void* arg) {
 				server->fishes[fishToCatch].taken = true;
 				response[responseLength++] = htons((uint16_t) 100);
 				
-				mtx.unlock();
+				mtxCatch.unlock();
 				break;
 			}
 			
 			case 3: // Kill message
 			{
-				mtx.lock();
+				mtxKill.lock();
 				int cPlayerNo = (int) threadInputBuffer[1];
 				int fishToCatch = (int) threadInputBuffer[2];
 				
 				if (fishToCatch < 0 || fishToCatch >= FISH_NUM) {
 					printf("Error in player %d killing fish %d: corrupted index\n", cPlayerNo, fishToCatch);
+					mtxKill.unlock();
 					break;
 				}
 				
 				printf("Player %d killed fish %d.\n", cPlayerNo, fishToCatch);
 				
 				server->fishes[fishToCatch].alive = false;
-				mtx.unlock();
+				mtxKill.unlock();
 				break;
 			}	
 			break;
 			
 			case 4: // lobby message
 			{
-				mtx.lock();
+				mtxLobby.lock();
 				int cPlayerNo = (int) threadInputBuffer[1];
 				
 				printf("Lobby started by player %d.\n", cPlayerNo);
@@ -146,13 +153,13 @@ void* clientHandler(void* arg) {
 				server->start = true;
 				
 				response[responseLength++] = htons((uint16_t) server->actorNum);
-				mtx.unlock();
+				mtxLobby.unlock();
 				break;
 			}	
 			
 			case 5: // wait message
 			{
-				mtx.lock();
+				mtxWait.lock();
 				int cPlayerNo = (int) threadInputBuffer[1];
 				
 				//printf("Handling wait message from player %d.\n", cPlayerNo);
@@ -163,7 +170,7 @@ void* clientHandler(void* arg) {
 					response[responseLength++] = htons((uint16_t) server->actorNum);
 				}
 				//writeResponse(connection, response, responseLength);
-				mtx.unlock();
+				mtxWait.unlock();
 				break;
 			}
 		}

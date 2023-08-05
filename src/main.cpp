@@ -160,7 +160,13 @@ void* sendCatchMessage(void* msg) {
 
     uint16_t response[BUFFER_SIZE];
 	printf("Reading Response!\n");
-    read(myMsg->serverSocket, response, 2*BUFFER_SIZE);
+	int bytesRead = read(myMsg->serverSocket, response, 2 * BUFFER_SIZE);
+
+    if (bytesRead <= 0) {
+        // Error occurred or connection closed
+        printf("Error reading response from server.\n");
+        return nullptr;
+    }
 
 	printf("Response = %d\n", ntohs(response[0]));
     
