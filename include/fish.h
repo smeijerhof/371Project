@@ -15,6 +15,8 @@ struct Fish {
     bool taken = false;
 	
 	int texNum = 0;
+	
+	Color c = WHITE;
 
     void spawn(float x, float y) {
         alive = true;
@@ -22,7 +24,7 @@ struct Fish {
         pos = {x, y};
     }
 
-    void draw(Texture2D tex, Color c) {
+    void draw(Texture2D tex) {
         if (!alive) return;
       
         Vector2 drawPos = pos;
