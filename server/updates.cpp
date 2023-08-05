@@ -24,8 +24,10 @@ void handleCatchMessage(ServerState* server, uint16_t playerNumber, uint16_t req
 	
 	if (!server->fishes[requestFish].alive || server->fishes[requestFish].taken != 5 || requestFish < 0 || requestFish >= FISH_NUM) {
 		printf("	-> Refusing catch request.\n");
+		printf("	-> alive = %d.\n", server->fishes[requestFish].alive);
+		printf("	-> taken = %d.\n", server->fishes[requestFish].taken);
 		server->setResponse(MESSAGE_NEGATIVE);
-		server->setResponse(server->fishes[requestFish].taken);
+		server->setResponse(5);
 		return;
 	}
 	printf("	-> Accepting catch request.\n");
@@ -34,6 +36,11 @@ void handleCatchMessage(ServerState* server, uint16_t playerNumber, uint16_t req
 	
 	server->fishes[requestFish].taken = playerNumber;
 	server->playerLures[playerNumber] = requestFish;
+	
+	for (int i = 0; i < FISH_NUM; i++) {
+		if (i == requestFish) continue;
+		if (server->fishes[i].taken == playerNumber) server->fishes[i].taken = FISH_NOT_TAKEN;
+	}
 	
 	server->setResponse(playerNumber);
 }
