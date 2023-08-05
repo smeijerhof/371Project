@@ -46,6 +46,8 @@ struct ServerState {
 	
 	uint16_t response[BUFFER_SIZE];
 	uint16_t responseLength;
+	
+	int connections = -1;
 
 	void printError(const char* message) {
 		perror(message);
