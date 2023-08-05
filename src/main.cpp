@@ -162,19 +162,20 @@ int main() {
 		if (state.menu) {
 			
 			if (IsKeyPressed(KEY_H)) {
-				pthread_create(&serverThread, NULL, startServer, NULL);
+				//pthread_create(&serverThread, NULL, startServer, NULL);
 			}
 			
 			if (IsKeyPressed(KEY_J)) {
 				state.menu = false;
 				clientSocket = connectToServer();
 				joinLobby(&state, &connectionThread, clientSocket);
+				pthread_join(connectionThread, NULL);
 			}
 			BeginDrawing();
 				ClearBackground(DARKBLUE);
 				DrawText("Fishing Frenzy", (SCREEN_WIDTH - MeasureText("Fishing Frenzy", 50)) / 2.f, 20, 50, WHITE);
-				DrawText("Press the H KEY to host a server", (SCREEN_WIDTH - MeasureText("Press the H KEY to host a server", 50)) / 2.f, 70, 50, WHITE);
-				DrawText("Press the J KEY to join the server", (SCREEN_WIDTH - MeasureText("Press the J KEY to join the server", 50)) / 2.f, 120, 50, WHITE);
+				//DrawText("Press the H KEY to host a server", (SCREEN_WIDTH - MeasureText("Press the H KEY to host a server", 30)) / 2.f, 70, 30, WHITE);
+				DrawText("Press the J KEY to join the server", (SCREEN_WIDTH - MeasureText("Press the J KEY to join the server", 30)) / 2.f, 100, 30, WHITE);
 			EndDrawing();
 			continue;
 		}
