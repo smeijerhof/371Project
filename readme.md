@@ -26,13 +26,13 @@ Download `FishingFrenzy.zip` into your directory of choice. Extract its contents
 ```
 unzip FishingFrenzy.zip
 ```
-You can start a server by opening a terminal in `FishingFrenzy` and running
+You can start a server by opening a terminal in `FishingFrenzy/` and running
 ```
 ./server
 ```
 Then run the exectuable found at `FishingFrenzy/frenzy` by double clicking it.
 
-Fishing Frenzy is confirmed to work on Debian-based systems.
+Fishing Frenzy is confirmed to work on Debian-based systems. We reccomend using Ubuntu 20.04 LTS.
 
 ## Instructions
 
