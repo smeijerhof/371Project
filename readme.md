@@ -36,7 +36,7 @@ Fishing Frenzy is confirmed to work on Debian-based systems. We reccomend using 
 
 ## Instructions
 
-You can start a server by opening a terminal in `FishingFrenzy` and running
+You can start a server by opening a terminal in `FishingFrenzy/` and running
 ```
 ./server
 ```
