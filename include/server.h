@@ -57,22 +57,23 @@ struct ServerState {
     ServerState() {
 		numberOfClients = 0;
 		
+        // return file descriptor for connection socket
+        sock = socket(AF_INET, SOCK_STREAM, 0);
+        if(sock < 0)
+            printError("Failed to create new socket\n");
+    
         // specify socket to read from 
         memset(&channel, 0, sizeof(channel));
         channel.sin_family = AF_INET;
         channel.sin_addr.s_addr = htonl(INADDR_ANY);
         channel.sin_port = htons(SERVER_PORT);
-    
-        // return file descriptor for socket
-        sock = socket(AF_INET, SOCK_STREAM, 0);
-        if(sock < 0)
-            printError("Failed to create new socket\n");
-    
+
         // bind socket to supplied address, port
         int b = bind(sock, (struct sockaddr *) &channel, sizeof(channel));
         if(b < 0) 
             printError("Bind failed\n");
 		
+		// Mark port as one for program input
 		int l = listen(sock, QUEUE_SIZE);
 		if(l < 0) 
 			printError("Listen failed");

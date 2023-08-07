@@ -1,10 +1,11 @@
 #include "../include/server_updates.h"
 
 void handleUpdateMessage(ServerState* server, uint16_t playerNumber, float x, float y, uint16_t score) {
+	// Update server info with incoming values
 	server->playerCursors[playerNumber] = (Vector2) {x, y};
-	
 	server->playerScores[playerNumber] = score;
 	
+	// Add each player's cursor location, score, fish being caught to response
 	for(int i = 0; i < server->numberOfClients; i++) {
 		server->setResponse(server->playerCursors[i].x);
 		server->setResponse(server->playerCursors[i].y);
@@ -12,6 +13,7 @@ void handleUpdateMessage(ServerState* server, uint16_t playerNumber, float x, fl
 		server->setResponse(server->playerLures[i]);
 	}
 	
+	// Add fish status (caught or not) to response
 	for (int i = 0; i < FISH_NUM; i++) {
 		uint16_t alive = 0;
 		if (server->fishes[i].alive) alive = 1;
@@ -22,6 +24,7 @@ void handleUpdateMessage(ServerState* server, uint16_t playerNumber, float x, fl
 void handleCatchMessage(ServerState* server, uint16_t playerNumber, uint16_t requestFish) {
 	printf("Player attemping to catch fish %d.\n", requestFish);
 	
+	// Deny request if fish has been caught, allocated to different player, or index invalid
 	if (!server->fishes[requestFish].alive || server->fishes[requestFish].taken != 5 || requestFish < 0 || requestFish >= FISH_NUM) {
 		printf("	-> Refusing catch request.\n");
 		printf("	-> alive = %d.\n", server->fishes[requestFish].alive);
@@ -32,6 +35,7 @@ void handleCatchMessage(ServerState* server, uint16_t playerNumber, uint16_t req
 	}
 	printf("	-> Accepting catch request.\n");
 	
+	// Accept request: update server
 	server->setResponse(MESSAGE_POSITIVE);
 	
 	server->fishes[requestFish].taken = playerNumber;
@@ -53,7 +57,6 @@ void handleTerminateMessage(ServerState* server, uint16_t playerNumber, uint16_t
 	
 	if (success == 1) {
 		printf("Killed fish %d.\n", requestFish);
-		
 		server->fishes[requestFish].alive = false;
 		server->playerLures[playerNumber] = -1;
 	} else if (success == 0) {
