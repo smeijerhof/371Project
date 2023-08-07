@@ -14,7 +14,7 @@ void printError(const char* message) {
     exit(-1);
 }
 
-int connectToServer() {
+int connectToServer(const char* IP) {
     struct hostent* serverInfo;
     serverInfo = gethostbyname(IP);
 	if(serverInfo == NULL)
@@ -148,7 +148,14 @@ void* startServer(void* arg) {
 	return 0;
 }
 
-int main() {
+int main(int argc, char *argv[]) {
+	if (argc != 2) {
+		printf("Incorrect number of arguments: please input server IP\n");
+		return 0;
+	}
+	
+	const char* IP = argv[1];
+	
 	Game state;
 	initRaylib(&state);
 	
@@ -167,7 +174,7 @@ int main() {
 			
 			if (IsKeyPressed(KEY_J)) {
 				state.menu = false;
-				clientSocket = connectToServer();
+				clientSocket = connectToServer(IP);
 				joinLobby(&state, &connectionThread, clientSocket);
 				pthread_join(connectionThread, NULL);
 			}
