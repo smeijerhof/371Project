@@ -30,7 +30,12 @@ You can start a server by opening a terminal in `FishingFrenzy/` and running
 ```
 ./server
 ```
-Then run the exectuable found at `FishingFrenzy/frenzy` by double clicking it.
+Then run the exectuable by opening a terminal in `FishingFrenzy/` and running
+```
+./frenzy <IP ADDRESS>
+```
+
+Where <IP ADDRESS> is the IP address of the machine running the server.
 
 Fishing Frenzy is confirmed to work on Debian-based systems. We reccomend using Ubuntu 20.04 LTS.
 
@@ -40,7 +45,21 @@ You can start a server by opening a terminal in `FishingFrenzy/` and running
 ```
 ./server
 ```
-After and only after a server has been started, each player, including the one who started the server, can press the j key to join the game.
-The first player to join is the host. The host can start the game by pressing the z key, after which a short timer will start before actually commencing the game.
+
+Before that, you should run
+```
+hostname -I
+```
+To find out the server machine's IP address. This address is needed as an argument in running the game executable.
+
+After and only after a server has been started, each player, including the one who started the server, need to run the game executable with
+```
+./frenzy <IP ADDRESS>
+```
+
+Where <IP ADDRESS> is the IP address of the machine running the server. Note that the machine running the server can use "localhost" as the argument, instead of an IP address.
+
+Once in the game, players can press the j key to join the game.
+The first player to join is the host. The host can start the game by pressing the z key, after which a short timer will start before actually commencing the game. The host does not need to be the same user running the server.
 
 All of this information is also found within the game.
