@@ -2,8 +2,7 @@
 
 #include "stdint.h"
 
-#define SERVER_PORT 65502
-#define IP "localhost"
+#define SERVER_PORT 65505
 #define BUFFER_SIZE 64
 #define QUEUE_SIZE 4
 #define PLACEHOLDER 1000
